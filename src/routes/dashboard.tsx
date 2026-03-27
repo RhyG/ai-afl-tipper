@@ -37,9 +37,17 @@ export async function syncFixtures(round: number, year: number) {
   const games = await fetchFixtures(round, year);
 
   const upsert = db.prepare(`
-    INSERT OR REPLACE INTO fixtures
+    INSERT INTO fixtures
       (squiggle_id, round, year, home_team, away_team, venue, game_date, home_score, away_score, winner, is_complete, complete, synced_at)
     VALUES ($squiggle_id, $round, $year, $home_team, $away_team, $venue, $game_date, $home_score, $away_score, $winner, $is_complete, $complete, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+    ON CONFLICT(squiggle_id) DO UPDATE SET
+      home_score = excluded.home_score,
+      away_score = excluded.away_score,
+      winner     = excluded.winner,
+      is_complete = excluded.is_complete,
+      complete   = excluded.complete,
+      venue      = excluded.venue,
+      synced_at  = excluded.synced_at
   `);
 
   for (const game of games) {
