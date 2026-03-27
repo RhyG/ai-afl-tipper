@@ -50,9 +50,26 @@ export function runMigrations() {
       reasoning TEXT NOT NULL DEFAULT '',
       data_summary TEXT NOT NULL DEFAULT '',
       key_factors TEXT NOT NULL DEFAULT '',
+      player_availability TEXT NOT NULL DEFAULT '',
       ai_provider TEXT NOT NULL DEFAULT 'claude',
       model TEXT NOT NULL DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+    )
+  `);
+
+  // Idempotent migration: add player_availability to existing DBs
+  try {
+    db.run("ALTER TABLE tips ADD COLUMN player_availability TEXT NOT NULL DEFAULT ''");
+  } catch {
+    // Column already exists — safe to ignore
+  }
+
+  // Disable dead RSS feeds in existing DBs
+  db.run(`
+    UPDATE data_sources SET enabled = 0
+    WHERE url IN (
+      'https://www.theroar.com.au/afl/feed/',
+      'https://www.sportingnews.com/au/afl/rss'
     )
   `);
 
@@ -95,18 +112,6 @@ function seedDefaultSources() {
       description: "Zero Hanger AFL news feed",
     },
     {
-      name: "The Roar AFL",
-      type: "rss",
-      url: "https://www.theroar.com.au/afl/feed/",
-      description: "The Roar AFL opinion and analysis",
-    },
-    {
-      name: "Sporting News AU",
-      type: "rss",
-      url: "https://www.sportingnews.com/au/afl/rss",
-      description: "Sporting News Australia AFL coverage",
-    },
-    {
       name: "Real Footy (The Age)",
       type: "rss",
       url: "https://www.theage.com.au/rss/sport/afl.xml",
@@ -117,6 +122,12 @@ function seedDefaultSources() {
       type: "url",
       url: "https://afltables.com/afl/seas/2026.html",
       description: "Season statistics and standings",
+    },
+    {
+      name: "Footywire Ladder",
+      type: "url",
+      url: "https://www.footywire.com/afl/footy/ladder",
+      description: "Current AFL season ladder and form from Footywire",
     },
   ];
 

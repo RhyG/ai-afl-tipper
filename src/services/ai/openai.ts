@@ -9,6 +9,7 @@ const TipResultSchema = z.object({
   reasoning: z.string(),
   dataSummary: z.string(),
   keyFactors: z.string(),
+  playerAvailability: z.string(),
 });
 
 const SYSTEM_PROMPT = `You are an expert AFL tipping analyst. Your job is to analyse provided data sources and pick the winner of each AFL game.
@@ -19,7 +20,8 @@ You MUST respond with a single valid JSON object matching this exact shape:
   "confidence": <integer 0-100>,
   "reasoning": "<full written reasoning, 2-4 paragraphs>",
   "dataSummary": "<newline-separated bullets, one per source: - [Source Name]: [key signal or 'no relevant info']>",
-  "keyFactors": "<newline-separated bullets, 3-5 decisive factors: - [factor]>"
+  "keyFactors": "<newline-separated bullets, 3-5 decisive factors: - [factor]>",
+  "playerAvailability": "<newline-separated list of injured/suspended/unavailable players found in sources: - [Team]: [Player] ([injury/status]); if none found write 'None noted'>"
 }
 
 Rules:
@@ -27,6 +29,7 @@ Rules:
 - "confidence" reflects your certainty: 50 = coin flip, 70 = reasonably confident, 90 = very confident
 - "dataSummary" must include one bullet per source consulted
 - "keyFactors" must have 3-5 bullets summarising the decisive factors
+- "playerAvailability" CRITICAL: scan every source for injuries, suspensions, "out", "unavailable", "doubt", "managed", "test", or "omitted". Name every affected player and their team. Missing key players is often the single most decisive factor — do not skip this.
 - Do not include any text outside the JSON object`;
 
 export class OpenAIProvider implements AIProvider {

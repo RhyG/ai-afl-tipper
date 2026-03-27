@@ -23,7 +23,18 @@ export interface FetchedSource {
 }
 
 async function fetchRss(source: DataSource): Promise<string> {
-  const feed = await rssParser.parseURL(source.url);
+  // Pre-fetch as text so we can sanitize malformed XML (bare & in attributes/content)
+  // before handing to the strict XML parser.
+  const res = await fetch(source.url, {
+    headers: { "User-Agent": "AFL-AI-Tipper/1.0" },
+    signal: AbortSignal.timeout(10000),
+  });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const raw = await res.text();
+  // Replace & not already part of a valid XML entity or numeric reference
+  const sanitized = raw.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, "&amp;");
+
+  const feed = await rssParser.parseString(sanitized);
   const items = (feed.items ?? []).slice(0, 10);
   return items
     .map((item) => {

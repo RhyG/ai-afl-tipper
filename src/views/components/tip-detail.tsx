@@ -172,6 +172,21 @@ export const TipDetail: FC<TipDetailProps> = ({ fixture, tip }) => {
         </div>
       )}
 
+      {/* Player Availability */}
+      {tip.player_availability && tip.player_availability !== "None noted" && (
+        <div class="rounded-lg border border-orange-700/30 bg-orange-950/20 px-4 py-3">
+          <h3 class="text-xs font-semibold text-orange-400 uppercase tracking-wider mb-2">⚠ Player Availability</h3>
+          <ul class="space-y-1">
+            {renderBullets(tip.player_availability).map((line) => (
+              <li class="flex gap-2 text-sm text-orange-200/80">
+                <span class="text-orange-500 mt-0.5 shrink-0">!</span>
+                <span>{line}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Reasoning */}
       {tip.reasoning && (
         <div>

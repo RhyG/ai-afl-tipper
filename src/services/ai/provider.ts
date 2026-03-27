@@ -19,6 +19,7 @@ export interface TipResult {
   reasoning: string;
   dataSummary: string;
   keyFactors: string;
+  playerAvailability: string;
 }
 
 export interface AIProvider {
