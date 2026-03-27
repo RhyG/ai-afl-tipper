@@ -146,6 +146,9 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
           <div class={`text-sm font-bold leading-tight ${
             homeWon ? "text-white" : isComplete ? "text-gray-400" : "text-white"
           }`}>
+            {hasTip && !isComplete && tip!.tip === fixture.home_team && (
+              <span class="mr-1.5 text-green-400">▶</span>
+            )}
             {fixture.home_team}
             {homeWon && <span class="ml-1 text-green-400 text-xs">W</span>}
             {isComplete && awayWon && <span class="ml-1 text-gray-600 text-xs">L</span>}
@@ -160,6 +163,9 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
             awayWon ? "text-white" : isComplete ? "text-gray-400" : "text-white"
           }`}>
             {fixture.away_team}
+            {hasTip && !isComplete && tip!.tip === fixture.away_team && (
+              <span class="ml-1.5 text-green-400">◀</span>
+            )}
             {awayWon && <span class="ml-1 text-green-400 text-xs">W</span>}
             {isComplete && homeWon && <span class="ml-1 text-gray-600 text-xs">L</span>}
           </div>
@@ -178,25 +184,24 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
       {/* Tip section */}
       {hasTip ? (
         <div class="space-y-2">
-          <div class="flex items-center justify-between">
-            <div class="flex items-center gap-1.5">
-              <span class={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                correctness === "correct"
-                  ? "bg-green-600 text-white"
-                  : correctness === "incorrect"
-                  ? "bg-red-900/70 text-red-300 line-through"
-                  : "bg-blue-600 text-white"
-              }`}>
-                {tip!.tip}
-              </span>
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <div>
+                <div class="text-xs text-gray-500 mb-0.5">Tipped to win</div>
+                <div class={`text-base font-bold ${
+                  correctness === "incorrect" ? "text-gray-500 line-through" : "text-white"
+                }`}>
+                  {tip!.tip}
+                </div>
+              </div>
               {correctness === "correct" && (
-                <span class="text-green-400 text-xs font-bold">✓ Correct</span>
+                <span class="text-green-400 text-sm font-bold">✓ Correct</span>
               )}
               {correctness === "incorrect" && (
-                <span class="text-red-400 text-xs font-bold">✗ Wrong</span>
+                <span class="text-red-400 text-sm font-bold">✗ Wrong</span>
               )}
             </div>
-            <span class="text-xs text-gray-600">{tip!.ai_provider}/{tip!.model?.split("-").slice(-2).join("-")}</span>
+            <span class="text-xs text-gray-600 shrink-0">{tip!.ai_provider}/{tip!.model?.split("-").slice(-2).join("-")}</span>
           </div>
           <ConfidenceBar value={tip!.confidence} />
           <div class="flex gap-2 pt-1">

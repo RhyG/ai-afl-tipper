@@ -60,6 +60,9 @@ export const TipDetail: FC<TipDetailProps> = ({ fixture, tip }) => {
         <div class="flex-1">
           <div class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Home</div>
           <div class={`text-sm font-bold ${homeWon ? "text-white" : isComplete ? "text-gray-500" : "text-white"}`}>
+            {!isComplete && tip.tip === fixture.home_team && (
+              <span class="mr-1.5 text-green-400">▶</span>
+            )}
             {fixture.home_team}
             {homeWon && <span class="ml-1.5 text-green-400 text-xs font-bold">W</span>}
             {isComplete && awayWon && <span class="ml-1.5 text-gray-600 text-xs">L</span>}
@@ -70,6 +73,9 @@ export const TipDetail: FC<TipDetailProps> = ({ fixture, tip }) => {
           <div class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Away</div>
           <div class={`text-sm font-bold ${awayWon ? "text-white" : isComplete ? "text-gray-500" : "text-white"}`}>
             {fixture.away_team}
+            {!isComplete && tip.tip === fixture.away_team && (
+              <span class="ml-1.5 text-green-400">◀</span>
+            )}
             {awayWon && <span class="ml-1.5 text-green-400 text-xs font-bold">W</span>}
             {isComplete && homeWon && <span class="ml-1.5 text-gray-600 text-xs">L</span>}
           </div>
