@@ -102,6 +102,147 @@ async function _doDetect(): Promise<{ round: number; year: number }> {
   return _currentRound;
 }
 
+// ── All-games cache (15-min TTL, used for structured pre-processing) ──────────
+
+const _allGamesCache = new Map<number, { games: SquiggleGame[]; fetchedAt: number }>();
+const ALL_GAMES_TTL_MS = 15 * 60 * 1000;
+
+export async function fetchAllGamesForYear(year: number): Promise<SquiggleGame[]> {
+  const cached = _allGamesCache.get(year);
+  if (cached && Date.now() - cached.fetchedAt < ALL_GAMES_TTL_MS) return cached.games;
+  const data = (await squiggleFetch(`q=games;year=${year}`)) as { games: SquiggleGame[] };
+  const games = data.games ?? [];
+  _allGamesCache.set(year, { games, fetchedAt: Date.now() });
+  return games;
+}
+
+// ── Stats helpers ─────────────────────────────────────────────────────────────
+
+export interface LadderRow {
+  rank: number;
+  team: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  points: number;
+  pct: number;
+}
+
+export function buildLadder(games: SquiggleGame[]): LadderRow[] {
+  const completed = games.filter((g) => g.complete === 100 && g.winner != null);
+  const stats = new Map<string, { wins: number; losses: number; draws: number; for: number; against: number }>();
+
+  const ensure = (t: string) => {
+    if (!stats.has(t)) stats.set(t, { wins: 0, losses: 0, draws: 0, for: 0, against: 0 });
+  };
+
+  for (const g of completed) {
+    ensure(g.hteam);
+    ensure(g.ateam);
+    const h = stats.get(g.hteam)!;
+    const a = stats.get(g.ateam)!;
+    h.for += g.hscore ?? 0;
+    h.against += g.ascore ?? 0;
+    a.for += g.ascore ?? 0;
+    a.against += g.hscore ?? 0;
+    if (g.winner === g.hteam) { h.wins++; a.losses++; }
+    else if (g.winner === g.ateam) { a.wins++; h.losses++; }
+    else { h.draws++; a.draws++; }
+  }
+
+  const rows: LadderRow[] = Array.from(stats.entries()).map(([team, s]) => ({
+    team,
+    wins: s.wins,
+    losses: s.losses,
+    draws: s.draws,
+    points: s.wins * 4 + s.draws * 2,
+    pct: s.against > 0 ? Math.round((s.for / s.against) * 1000) / 10 : 0,
+    rank: 0,
+  }));
+
+  rows.sort((a, b) => b.points - a.points || b.pct - a.pct);
+  rows.forEach((r, i) => (r.rank = i + 1));
+  return rows;
+}
+
+export interface FormEntry {
+  round: number;
+  opponent: string;
+  score: number;
+  opponentScore: number;
+  won: boolean;
+  margin: number;
+  atHome: boolean;
+}
+
+export function getRecentForm(
+  games: SquiggleGame[],
+  teamName: string,
+  beforeRound: number,
+  count: number
+): FormEntry[] {
+  return games
+    .filter(
+      (g) =>
+        g.complete === 100 &&
+        g.round < beforeRound &&
+        (g.hteam === teamName || g.ateam === teamName)
+    )
+    .sort((a, b) => b.round - a.round || b.id - a.id)
+    .slice(0, count)
+    .map((g) => {
+      const atHome = g.hteam === teamName;
+      const myScore = atHome ? (g.hscore ?? 0) : (g.ascore ?? 0);
+      const theirScore = atHome ? (g.ascore ?? 0) : (g.hscore ?? 0);
+      return {
+        round: g.round,
+        opponent: atHome ? g.ateam : g.hteam,
+        score: myScore,
+        opponentScore: theirScore,
+        won: g.winner === teamName,
+        margin: myScore - theirScore,
+        atHome,
+      };
+    });
+}
+
+export interface H2HEntry {
+  round: number;
+  year: number;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  winner: string;
+}
+
+export function getH2HHistory(
+  games: SquiggleGame[],
+  team1: string,
+  team2: string,
+  beforeRound: number,
+  count: number
+): H2HEntry[] {
+  return games
+    .filter(
+      (g) =>
+        g.complete === 100 &&
+        g.round < beforeRound &&
+        ((g.hteam === team1 && g.ateam === team2) || (g.hteam === team2 && g.ateam === team1))
+    )
+    .sort((a, b) => b.round - a.round)
+    .slice(0, count)
+    .map((g) => ({
+      round: g.round,
+      year: g.year,
+      homeTeam: g.hteam,
+      awayTeam: g.ateam,
+      homeScore: g.hscore ?? 0,
+      awayScore: g.ascore ?? 0,
+      winner: g.winner ?? "Unknown",
+    }));
+}
+
 export function getCachedRound(): { round: number; year: number } | null {
   return _currentRound;
 }
