@@ -9,11 +9,13 @@ export interface AISettings {
 const PROVIDER_DEFAULTS: Record<string, string> = {
   claude: "claude-opus-4-6",
   openai: "gpt-4o",
+  multi: "claude-opus-4-6 + gpt-4o",
 };
 
 export const PROVIDER_MODELS: Record<string, string[]> = {
   claude: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
   openai: ["gpt-4o", "gpt-4o-mini", "o1", "o3-mini"],
+  multi: ["claude-opus-4-6 + gpt-4o"],
 };
 
 function getSetting(key: string): string | null {
