@@ -32,6 +32,10 @@ export const RoundView: FC<RoundViewProps> = ({
   const isUpcoming = round > currentRound || year > currentYear;
   const untippedCount = fixtures.filter((f) => !tips.has(f.id) && !f.is_complete).length;
   const hasCompleted = fixtures.some((f) => f.is_complete);
+  const now = new Date();
+  const hasLiveGames = fixtures.some(
+    (f) => f.is_complete === 0 && new Date(f.game_date) <= now
+  );
   const sportConfig = SPORTS[sport];
 
   return (
@@ -101,6 +105,16 @@ export const RoundView: FC<RoundViewProps> = ({
         <div class="mb-4 bg-yellow-900/20 border border-yellow-700/30 rounded-lg px-4 py-2 text-sm text-yellow-400">
           These games haven't been played yet — generate tips now to lock in your picks before they start.
         </div>
+      )}
+
+      {/* Auto-poll results every 60s when games are live */}
+      {hasLiveGames && (
+        <div
+          hx-post={`/results/sync?round=${round}&year=${year}&sport=${sport}`}
+          hx-target="#fixture-grid"
+          hx-swap="innerHTML"
+          hx-trigger="every 60s"
+        />
       )}
 
       {/* Fixture grid */}
