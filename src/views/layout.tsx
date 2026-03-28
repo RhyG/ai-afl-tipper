@@ -251,14 +251,6 @@ export const Layout: FC<LayoutProps> = ({
             out.scrollTop = out.scrollHeight;
           }
 
-          // Open terminal automatically when tip generation starts
-          document.addEventListener('htmx:beforeRequest', (e) => {
-            const url = e.detail?.requestConfig?.path || '';
-            if (url.includes('/tips/generate')) {
-              openTerminal();
-            }
-          });
-
           // Connect SSE on load so history is immediately available if terminal opens
           window.addEventListener('load', () => connectSSE());
         `}} />

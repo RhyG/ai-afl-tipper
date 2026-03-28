@@ -231,9 +231,11 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
                 hx-post={`/tips/generate/${fixture.id}`}
                 hx-target={`#fixture-${fixture.id}`}
                 hx-swap="outerHTML"
-                class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-500 px-3 py-2 rounded-lg transition-colors"
+                hx-indicator={`#retip-spinner-${fixture.id}`}
+                class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-500 px-3 py-2 rounded-lg transition-colors flex items-center gap-1"
               >
                 Re-tip
+                <span id={`retip-spinner-${fixture.id}`} class="htmx-indicator text-xs">⏳</span>
               </button>
             )}
           </div>
