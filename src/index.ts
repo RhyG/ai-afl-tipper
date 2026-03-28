@@ -10,6 +10,7 @@ import { tipsRouter } from "./routes/tips.tsx";
 import { resultsRouter } from "./routes/results.tsx";
 import { sourcesRouter } from "./routes/sources.tsx";
 import { settingsRouter } from "./routes/settings.tsx";
+import { oddsRouter } from "./routes/odds.tsx";
 
 // Bootstrap
 runMigrations();
@@ -25,6 +26,7 @@ app.route("/tips", tipsRouter);
 app.route("/results", resultsRouter);
 app.route("/sources", sourcesRouter);
 app.route("/settings", settingsRouter);
+app.route("/odds", oddsRouter);
 
 const port = config.port;
 console.log("🏈 AFL AI Tipper starting up...");

@@ -84,6 +84,19 @@ export const TipDetail: FC<TipDetailProps> = ({ fixture, tip }) => {
 
       <div class="text-xs text-gray-600">📍 {fixture.venue} · 📅 {formatDate(fixture.game_date)}</div>
 
+      {/* Bookmaker odds — lazy-loaded for upcoming games */}
+      {!isComplete && !isLive && (
+        <div
+          id={`odds-${fixture.id}`}
+          hx-get={`/odds/fixture/${fixture.id}`}
+          hx-trigger="load"
+          hx-swap="outerHTML"
+          class="text-xs text-gray-700 animate-pulse"
+        >
+          Loading odds...
+        </div>
+      )}
+
       {/* Score */}
       {(isComplete || isLive) && fixture.home_score != null && (
         <div class={`rounded-lg overflow-hidden border ${isLive ? "border-red-500/40" : "border-gray-700/50"}`}>

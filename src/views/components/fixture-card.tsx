@@ -178,6 +178,19 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
         <span>📅 {formatDate(fixture.game_date)}</span>
       </div>
 
+      {/* Bookmaker odds — lazy-loaded for upcoming games only */}
+      {!isComplete && !isLive && (
+        <div
+          id={`odds-${fixture.id}`}
+          hx-get={`/odds/fixture/${fixture.id}`}
+          hx-trigger="load"
+          hx-swap="outerHTML"
+          class="text-xs text-gray-700 animate-pulse"
+        >
+          Loading odds...
+        </div>
+      )}
+
       {/* Scoreboard */}
       <Scoreboard fixture={fixture} />
 

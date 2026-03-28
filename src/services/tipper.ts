@@ -11,6 +11,7 @@ import {
   getH2HHistory,
   type SquiggleGame,
 } from "./squiggle";
+import { fetchAFLOdds, findGameOdds, formatOddsForPrompt } from "./odds";
 import type { GameContext } from "./ai/provider";
 
 export interface Fixture {
@@ -171,6 +172,30 @@ export async function generateTipForFixture(fixtureId: number): Promise<Tip> {
     emit({ type: "fetch", text: `  ✓ Structured Game Context (${structuredContext.content.length} chars)\n` });
   } catch (err) {
     emit({ type: "error", text: `  ✗ Structured context unavailable: ${err}\n` });
+  }
+
+  // ── Bookmaker odds ─────────────────────────────────────────────────────────
+  if (process.env.THE_ODDS_API_KEY) {
+    try {
+      emit({ type: "fetch", text: `Fetching bookmaker odds...\n` });
+      const allOdds = await fetchAFLOdds();
+      const gameOdds = findGameOdds(allOdds, fixture.home_team, fixture.away_team);
+      if (gameOdds && gameOdds.bookmakers.length > 0) {
+        const oddsContent = formatOddsForPrompt(gameOdds, fixture.home_team, fixture.away_team);
+        const oddsSource = { name: "Bookmaker Odds", type: "odds", content: oddsContent };
+        // Insert right after structured context (index 0) so it appears early in the prompt
+        const [first, ...rest] = allSources;
+        allSources = first ? [first, oddsSource, ...rest] : [oddsSource, ...rest];
+        emit({
+          type: "fetch",
+          text: `  ✓ Bookmaker Odds (${gameOdds.bookmakers.length} bookmaker${gameOdds.bookmakers.length === 1 ? "" : "s"})\n`,
+        });
+      } else {
+        emit({ type: "fetch", text: `  - No odds listed yet for this game\n` });
+      }
+    } catch (err) {
+      emit({ type: "error", text: `  ✗ Bookmaker odds unavailable: ${err}\n` });
+    }
   }
 
   const gameContext: GameContext = {
