@@ -157,7 +157,7 @@ export async function validateAllSources(): Promise<{ ok: number; errors: number
     if (result.status === "fulfilled") {
       ok++;
       db.run(
-        "UPDATE data_sources SET last_validation_status = 'ok', last_validated_at = ?, last_validation_error = '' WHERE id = ?",
+        "UPDATE data_sources SET last_validation_status = 'ok', last_validated_at = ?, last_validation_error = '', enabled = 1 WHERE id = ?",
         [now, source.id]
       );
       console.log(`  ✓ ${source.name}`);
