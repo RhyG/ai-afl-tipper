@@ -37,7 +37,22 @@ async function fetchRss(source: DataSource): Promise<string> {
     .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
     .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, "&amp;");
 
-  const feed = await rssParser.parseString(sanitized);
+  let feed;
+  try {
+    feed = await rssParser.parseString(sanitized);
+  } catch {
+    // Feed is too malformed for the XML parser — fall back to plain-text extraction
+    return raw
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
   const items = (feed.items ?? []).slice(0, 10);
   return items
     .map((item) => {
