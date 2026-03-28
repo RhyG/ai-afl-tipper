@@ -5,6 +5,7 @@ import { getDb } from "../db/client";
 import { getFixturesForRound, getTipForFixture } from "../services/tipper";
 import type { Fixture, Tip } from "../services/tipper";
 import { getAISettings } from "../services/runtime-config";
+import { isValidating } from "../services/startup-state";
 import { Dashboard } from "../views/dashboard";
 import { RoundView } from "../views/round-view";
 
@@ -84,6 +85,26 @@ async function getRoundData(round: number, year: number) {
     : undefined;
   return { fixtures, tips, lastSyncedAt };
 }
+
+// Startup validation overlay status — polled by HTMX on every page
+app.get("/status/startup", (c) => {
+  if (isValidating()) {
+    return c.html(
+      `<div id="startup-overlay"
+            hx-get="/status/startup"
+            hx-trigger="every 2s"
+            hx-swap="outerHTML"
+            class="fixed inset-0 z-[200] bg-gray-950/90 backdrop-blur-sm flex items-center justify-center">
+        <div class="text-center">
+          <div style="width:2.5rem;height:2.5rem;border:3px solid #3b82f6;border-top-color:transparent;border-radius:9999px;animation:spin 0.8s linear infinite;margin:0 auto 1rem"></div>
+          <p class="text-white text-lg font-semibold">Verifying sources…</p>
+          <p class="text-gray-400 text-sm mt-1">Please wait — startup checks are running</p>
+        </div>
+      </div>`
+    );
+  }
+  return c.html(`<div id="startup-overlay"></div>`);
+});
 
 // Main dashboard — always shows current round
 app.get("/", async (c) => {
