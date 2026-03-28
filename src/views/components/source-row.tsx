@@ -19,40 +19,40 @@ const TYPE_COLORS: Record<string, string> = {
   "squiggle-tips": "bg-green-900/50 text-green-300 border-green-700/50",
 };
 
-const VALIDATION_DOT: Record<string, { class: string; title: string }> = {
-  ok: { class: "bg-green-500", title: "Validated OK" },
-  error: { class: "bg-red-500", title: "Validation failed" },
-  unknown: { class: "bg-gray-600", title: "Not yet validated" },
+const STATUS_BADGE: Record<string, { label: string; class: string }> = {
+  ok:      { label: "✓ Verified", class: "bg-green-900/50 text-green-400 border-green-700/50" },
+  error:   { label: "✗ Failed",   class: "bg-red-900/50 text-red-400 border-red-700/50" },
+  unknown: { label: "Pending",    class: "bg-gray-800 text-gray-500 border-gray-700" },
 };
 
 export const SourceRow: FC<{ source: Source }> = ({ source }) => {
   const typeClass = TYPE_COLORS[source.type] ?? "bg-gray-800 text-gray-400 border-gray-700";
   const status = source.last_validation_status ?? "unknown";
-  const dot = VALIDATION_DOT[status] ?? VALIDATION_DOT.unknown;
-  const dotTitle =
+  const badge = STATUS_BADGE[status] ?? STATUS_BADGE.unknown;
+  const badgeTitle =
     status === "error" && source.last_validation_error
-      ? `Error: ${source.last_validation_error}`
-      : dot.title;
+      ? source.last_validation_error
+      : undefined;
 
   return (
     <tr id={`source-${source.id}`} class="border-t border-gray-800 hover:bg-gray-800/50 transition-colors">
       <td class="px-4 py-3">
-        <div class="flex items-center gap-2">
-          <span
-            class={`shrink-0 w-2 h-2 rounded-full ${dot.class}`}
-            title={dotTitle}
-          />
-          <div>
-            <div class="font-medium text-white text-sm">{source.name}</div>
-            {source.description && (
-              <div class="text-xs text-gray-500 mt-0.5">{source.description}</div>
-            )}
-          </div>
-        </div>
+        <div class="font-medium text-white text-sm">{source.name}</div>
+        {source.description && (
+          <div class="text-xs text-gray-500 mt-0.5">{source.description}</div>
+        )}
       </td>
       <td class="px-4 py-3">
         <span class={`text-xs font-medium px-2 py-0.5 rounded border ${typeClass}`}>
           {source.type}
+        </span>
+      </td>
+      <td class="px-4 py-3">
+        <span
+          class={`text-xs font-medium px-2 py-0.5 rounded border ${badge.class}`}
+          title={badgeTitle}
+        >
+          {badge.label}
         </span>
       </td>
       <td class="px-4 py-3 max-w-xs">

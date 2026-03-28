@@ -35,12 +35,18 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
             <tr class="text-left text-xs text-gray-500 uppercase tracking-wider bg-gray-800/50">
               <th class="px-4 py-3">Name</th>
               <th class="px-4 py-3">Type</th>
+              <th class="px-4 py-3">Status</th>
               <th class="px-4 py-3">URL</th>
               <th class="px-4 py-3">Enabled</th>
               <th class="px-4 py-3"></th>
             </tr>
           </thead>
-          <tbody id="sources-table">
+          <tbody
+            id="sources-table"
+            hx-get="/sources/rows"
+            hx-trigger="startupComplete from:body"
+            hx-swap="innerHTML"
+          >
             {sources.map((s) => (
               <SourceRow source={s} />
             ))}

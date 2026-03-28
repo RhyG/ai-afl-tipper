@@ -12,6 +12,9 @@ interface Source {
   url: string;
   description: string;
   enabled: number;
+  last_validation_status?: string;
+  last_validated_at?: string;
+  last_validation_error?: string;
 }
 
 const app = new Hono();
@@ -24,6 +27,14 @@ app.get("/", (c) => {
   return c.html("<!DOCTYPE html>" + renderToString(page as any));
 });
 
+// Partial: just the tbody rows — used by HTMX to refresh after startup validation
+app.get("/rows", (c) => {
+  const db = getDb();
+  const sources = db.query<Source, []>("SELECT * FROM data_sources ORDER BY id ASC").all();
+  const rows = sources.map((s) => <SourceRow source={s} />);
+  return c.html(renderToString(<>{rows}</> as any));
+});
+
 app.post("/", async (c) => {
   const body = await c.req.parseBody();
   const name = (body.name as string)?.trim();
@@ -32,7 +43,7 @@ app.post("/", async (c) => {
   const description = (body.description as string)?.trim() ?? "";
 
   if (!name || !type || !url) {
-    return c.html('<tr><td colspan="5" class="px-4 py-3 text-red-400 text-sm">Name, type and URL are required</td></tr>', 400);
+    return c.html('<tr><td colspan="6" class="px-4 py-3 text-red-400 text-sm">Name, type and URL are required</td></tr>', 400);
   }
 
   const db = getDb();
@@ -49,7 +60,7 @@ app.post("/", async (c) => {
     return c.html(renderToString(row as any));
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error";
-    return c.html(`<tr><td colspan="5" class="px-4 py-3 text-red-400 text-sm">Error: ${msg}</td></tr>`, 500);
+    return c.html(`<tr><td colspan="6" class="px-4 py-3 text-red-400 text-sm">Error: ${msg}</td></tr>`, 500);
   }
 });
 

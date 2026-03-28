@@ -103,6 +103,7 @@ app.get("/status/startup", (c) => {
       </div>`
     );
   }
+  c.header("HX-Trigger", "startupComplete");
   return c.html(`<div id="startup-overlay"></div>`);
 });
 
