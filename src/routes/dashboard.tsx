@@ -14,8 +14,20 @@ import type { GameRecord } from "../services/game-record";
 
 const app = new Hono();
 
-// How many rounds ahead of current to allow browsing
-const UPCOMING_ROUNDS = 2;
+// Per-sport explored max round. Starts at currentRound+3 and extends by 3
+// each time the user navigates to the edge of the browsable range.
+const _exploredMax = new Map<SportId, number>();
+
+function getMaxRound(sport: SportId, currentRound: number, viewedRound: number | null, sportMaxRounds: number): number {
+  const floor = currentRound + 3;
+  const stored = _exploredMax.get(sport) ?? floor;
+  let max = Math.max(stored, floor); // advance with currentRound if it overtakes stored value
+  if (viewedRound !== null && viewedRound >= max) {
+    max = Math.min(sportMaxRounds, viewedRound + 3);
+    _exploredMax.set(sport, max);
+  }
+  return Math.min(sportMaxRounds, max);
+}
 
 export function buildTipsMap(fixtures: Fixture[]): Map<number, Tip> {
   const map = new Map<number, Tip>();
@@ -109,7 +121,7 @@ app.get("/", async (c) => {
   const sportConfig = SPORTS[sport];
   const current = await detectRound(sport);
   const { fixtures, tips, lastSyncedAt } = getRoundData(current.round, current.year, sport);
-  const maxRound = Math.min(sportConfig.maxRounds, current.round + UPCOMING_ROUNDS);
+  const maxRound = getMaxRound(sport, current.round, null, sportConfig.maxRounds);
 
   const aiSettings = getAISettings();
   const page = (
@@ -137,7 +149,7 @@ app.get("/rounds/:year/:round", async (c) => {
   const sport = parseSport(c.req.query("sport"));
   const sportConfig = SPORTS[sport];
   const current = await detectRound(sport);
-  const maxRound = Math.min(sportConfig.maxRounds, current.round + UPCOMING_ROUNDS);
+  const maxRound = getMaxRound(sport, current.round, round, sportConfig.maxRounds);
 
   if (isNaN(round) || isNaN(year) || round < 1 || round > sportConfig.maxRounds) {
     return c.redirect(`/?sport=${sport}`);

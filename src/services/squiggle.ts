@@ -81,10 +81,10 @@ async function _doDetect(): Promise<{ round: number; year: number }> {
 
   console.log(`Scanning rounds from guess ${guessRound}...`);
 
-  // Check rounds from guessRound back to 1, then forward to 24
+  // Only scan a small window: current guess, 2 back, 3 forward (6 rounds max)
   const roundsToCheck: number[] = [];
-  for (let r = guessRound; r >= 1; r--) roundsToCheck.push(r);
-  for (let r = guessRound + 1; r <= 24; r++) roundsToCheck.push(r);
+  for (let r = guessRound; r >= Math.max(1, guessRound - 2); r--) roundsToCheck.push(r);
+  for (let r = guessRound + 1; r <= Math.min(24, guessRound + 3); r++) roundsToCheck.push(r);
 
   for (const round of roundsToCheck) {
     try {
