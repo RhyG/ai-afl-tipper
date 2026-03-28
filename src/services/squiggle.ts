@@ -30,7 +30,7 @@ async function squiggleFetch(query: string): Promise<unknown> {
   return Promise.race([
     request,
     new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Squiggle request timed out")), 8000)
+      setTimeout(() => reject(new Error("Squiggle request timed out")), 20000)
     ),
   ]);
 }
