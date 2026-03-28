@@ -38,6 +38,9 @@ export const Layout: FC<LayoutProps> = ({
             .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
             .htmx-request .htmx-indicator { opacity: 1; }
             .htmx-request.htmx-indicator { opacity: 1; }
+            @keyframes spin { to { transform: rotate(360deg); } }
+            .htmx-request .spin-on-load { animation: spin 0.7s linear infinite; }
+            .htmx-request .label-on-load { opacity: 0.4; }
           `
         }} />
       </head>
