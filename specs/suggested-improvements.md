@@ -2,8 +2,10 @@
 
 ## Data Sources
 
-### Bookmaker Odds (The Odds API)
-Use theodds-api.com (free tier, 500 req/month). Fetches head-to-head prices from Sportsbet, TAB, Ladbrokes etc. for all upcoming AFL games. Convert to implied probabilities so the AI sees market consensus directly. One complication: team name normalisation (18-entry mapping table between Odds API full names and Squiggle short names).
+### ~~Bookmaker Odds (The Odds API)~~ ✓ Done
+~~Use theodds-api.com (free tier, 500 req/month). Fetches head-to-head prices from Sportsbet, TAB, Ladbrokes etc. for all upcoming AFL games. Convert to implied probabilities so the AI sees market consensus directly. One complication: team name normalisation (18-entry mapping table between Odds API full names and Squiggle short names).~~
+
+Implemented: `src/services/odds.ts` fetches h2h odds (au region, 1hr cache), normalises team names, computes average implied probability across bookmakers, injects into AI prompt and lazy-loads onto each fixture card via HTMX.
 
 ### BOM Weather
 Fetch conditions at the game venue from the Bureau of Meteorology. Wind speed/direction and rainfall are meaningful for kicking-heavy teams (Geelong, Brisbane) and wet-weather specialists. Requires a static mapping of AFL venues to their nearest BOM weather station ID, then one API call per game. Complexity is low once the mapping is written.
