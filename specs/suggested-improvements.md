@@ -29,8 +29,10 @@ Store tip results vs actual outcomes after each round completes. Track accuracy 
 ### Confidence Calibration
 Current confidence scores are the model's self-assessed certainty, which tends to be poorly calibrated. After enough history is collected, apply Platt scaling or isotonic regression to map raw confidence → calibrated probability.
 
-### Explicit Signal Weighting in Prompt
-Instruct the AI to weight signals in a defined order: bookmaker odds > model consensus (Squiggle tips) > recent form > H2H > historical base rates. Currently nothing guides relative weighting and the model may over-index on recency or news.
+### ~~Explicit Signal Weighting in Prompt~~ ✓ Done
+~~Instruct the AI to weight signals in a defined order: bookmaker odds > model consensus (Squiggle tips) > recent form > H2H > historical base rates. Currently nothing guides relative weighting and the model may over-index on recency or news.~~
+
+Implemented: added a "Signal weighting" section to `SYSTEM_PROMPT` in both `src/services/ai/claude.ts` and `src/services/ai/openai.ts` (5-point ordered hierarchy with a hard rule to justify any tip that disagrees with the bookmaker favourite). Added a matching reminder to `SYNTHESIS_SYSTEM_PROMPT` in `src/services/ai/multi.ts` so the panel chair also uses the hierarchy when arbitrating analyst disagreements.
 
 ### Ensemble Prompting
 Run 3+ prompts per game with different analytical frames (recent form only, H2H only, expert model consensus only) and aggregate by majority vote. Disagreement across frames is a reliable signal of genuine uncertainty.

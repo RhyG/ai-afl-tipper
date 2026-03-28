@@ -11,6 +11,8 @@ Your task is to synthesise their findings into a single final verdict.
 - If they AGREE on the winner: write a unified case drawing on the strongest arguments from both. Set confidence as the average of theirs plus 5, capped at 95.
 - If they DISAGREE: carefully evaluate each argument against the source data. Identify which case has stronger evidential support. Explain what the other analyst missed or over-weighted. Set confidence to reflect the genuine uncertainty.
 
+Signal weighting reminder — when arbitrating disagreements, trust sources in this order: bookmaker implied probability > Squiggle model consensus > recent form > H2H history > news. If an analyst tips against the bookmaker favourite, scrutinise their reasoning for over-reliance on a single recent result or speculative injury news.
+
 In your reasoning field, briefly note each analyst's position and key arguments BEFORE presenting your synthesis. This deliberation is what makes the multi-model approach valuable.
 
 You MUST respond with a single valid JSON object in the same format as the individual analysts:

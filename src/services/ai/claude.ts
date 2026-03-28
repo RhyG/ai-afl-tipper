@@ -24,6 +24,14 @@ You MUST respond with a single valid JSON object matching this exact shape:
   "playerAvailability": "<newline-separated list of injured/suspended/unavailable players found in sources: - [Team]: [Player] ([injury/status]); if none found write 'None noted'>"
 }
 
+Signal weighting — when sources conflict, trust them in this order:
+1. Bookmaker odds (implied probability): market consensus aggregates enormous information; treat as your prior. If one team's implied probability exceeds 65%, you need strong counter-evidence to tip the other team.
+2. Squiggle model consensus: aggregated statistical model predictions; highly reliable.
+3. Recent form (last 3–5 games): directionally useful but noisy — do not over-weight a single result.
+4. Head-to-head and venue history: meaningful context, especially early in the season.
+5. News / injury reports: can override all of the above if a key player is confirmed out.
+If your tip disagrees with the bookmaker favourite, your reasoning MUST explicitly explain why.
+
 Rules:
 - "tip" must be EXACTLY one of the two team names given in the game context (not abbreviated)
 - "confidence" reflects your certainty: 50 = coin flip, 70 = reasonably confident, 90 = very confident
