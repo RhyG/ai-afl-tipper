@@ -101,23 +101,36 @@ async function tsdFetch(endpoint: string): Promise<TsdbResponse> {
 let _currentRound: { round: number; year: number } | null = null;
 let _detectPromise: Promise<{ round: number; year: number }> | null = null;
 
+function _weekGuess(): { round: number; year: number } {
+  const year = new Date().getFullYear();
+  const now = new Date();
+  const weekOfYear = Math.floor(
+    (now.getTime() - new Date(year, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)
+  );
+  // NRL season starts ~week 9 (early Mar); subtract 8 to estimate round number
+  return { round: Math.max(1, Math.min(27, weekOfYear - 8)), year };
+}
+
 export async function detectCurrentNRLRound(): Promise<{ round: number; year: number }> {
   if (_currentRound) return _currentRound;
-  if (_detectPromise) return _detectPromise;
-  _detectPromise = _doDetect();
-  const result = await _detectPromise;
-  _detectPromise = null;
-  return result;
+  if (!_detectPromise) {
+    _detectPromise = _doDetect().finally(() => { _detectPromise = null; });
+  }
+  // Cap wait at 4 seconds — fall back to a week-based guess so the page loads fast.
+  // Detection continues in the background and _currentRound will be set for future requests.
+  const fallback = new Promise<{ round: number; year: number }>((resolve) =>
+    setTimeout(() => resolve(_currentRound ?? _weekGuess()), 4000)
+  );
+  return Promise.race([_detectPromise, fallback]);
 }
 
 async function _doDetect(): Promise<{ round: number; year: number }> {
   const year = new Date().getFullYear();
 
-  // Use season data to find current round — more reliable than team-based next-events endpoint
+  // Try season endpoint — free tier may return null, in which case fall back to week guess
   try {
     const allGames = await fetchAllNRLGamesForYear(year);
     if (allGames.length > 0) {
-      // Earliest round that still has incomplete games
       const incomplete = allGames.filter((g) => g.complete < 100);
       if (incomplete.length > 0) {
         const round = Math.min(...incomplete.map((g) => g.round));
@@ -125,44 +138,18 @@ async function _doDetect(): Promise<{ round: number; year: number }> {
         console.log(`[nrl] Round detected via season data: ${round}`);
         return _currentRound;
       }
-      // All games complete — return the final round
       const lastRound = Math.max(...allGames.map((g) => g.round));
       _currentRound = { round: lastRound, year };
       console.log(`[nrl] Season complete, using last round: ${lastRound}`);
       return _currentRound;
     }
   } catch (err) {
-    console.warn(`[nrl] Season data unavailable, falling back to scan: ${err}`);
+    console.warn(`[nrl] Season data unavailable: ${err}`);
   }
 
-  // Fallback: scan rounds from a week-based guess
-  const now = new Date();
-  const startOfYear = new Date(year, 0, 1);
-  const weekOfYear = Math.floor(
-    (now.getTime() - startOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000)
-  );
-  // NRL season starts ~week 9 (early Mar); subtract 8 to estimate round number
-  const guessRound = Math.max(1, Math.min(27, weekOfYear - 8));
-
-  console.log(`[nrl] Scanning rounds from guess ${guessRound}...`);
-
-  for (let round = Math.max(1, guessRound - 1); round <= 27; round++) {
-    try {
-      const games = await fetchNRLFixtures(round, year);
-      if (games.length === 0) continue;
-      const hasIncomplete = games.some((g) => g.complete < 100);
-      if (hasIncomplete) {
-        _currentRound = { round, year };
-        console.log(`[nrl] Current round found by scan: ${round}`);
-        return _currentRound;
-      }
-    } catch {
-      continue;
-    }
-  }
-
-  _currentRound = { round: guessRound, year };
-  console.log(`[nrl] Using guessed round: ${guessRound}`);
+  // Fall back to week-based calculation — no slow multi-round scan
+  _currentRound = _weekGuess();
+  console.log(`[nrl] Using week-based round estimate: ${_currentRound.round}`);
   return _currentRound;
 }
 
