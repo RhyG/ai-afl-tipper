@@ -73,7 +73,7 @@ function mapEvent(event: TsdbEvent): GameRecord {
 
   return {
     id: parseInt(event.idEvent, 10),
-    round: parseInt(event.intRound ?? "1", 10),
+    round: Math.max(1, parseInt(event.intRound ?? "1", 10) || 1),
     year,
     hteam: event.strHomeTeam,
     ateam: event.strAwayTeam,
@@ -131,14 +131,18 @@ async function _doDetect(): Promise<{ round: number; year: number }> {
   try {
     const allGames = await fetchAllNRLGamesForYear(year);
     if (allGames.length > 0) {
-      const incomplete = allGames.filter((g) => g.complete < 100);
+      // Cap at round 30 — TheSportsDB uses large IDs (e.g. 500+) for pre-season/exhibition games
+      const regularSeason = allGames.filter((g) => g.round >= 1 && g.round <= 30);
+      const incomplete = regularSeason.filter((g) => g.complete < 100);
       if (incomplete.length > 0) {
         const round = Math.min(...incomplete.map((g) => g.round));
         _currentRound = { round, year };
         console.log(`[nrl] Round detected via season data: ${round}`);
         return _currentRound;
       }
-      const lastRound = Math.max(...allGames.map((g) => g.round));
+      const lastRound = regularSeason.length > 0
+        ? Math.max(...regularSeason.map((g) => g.round))
+        : _weekGuess().round;
       _currentRound = { round: lastRound, year };
       console.log(`[nrl] Season complete, using last round: ${lastRound}`);
       return _currentRound;
