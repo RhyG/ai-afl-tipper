@@ -6,7 +6,7 @@
 import type { GameRecord } from "./game-record";
 
 const TSDB_BASE = "https://www.thesportsdb.com/api/v1/json/3";
-const NRL_LEAGUE_ID = 4180;
+const NRL_LEAGUE_ID = 4416; // Australian National Rugby League
 const USER_AGENT = "AFL-NRL-AI-Tipper/1.0 (contact: local-app)";
 
 interface TsdbEvent {

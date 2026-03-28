@@ -92,12 +92,18 @@ export function runMigrations() {
     // Column already exists
   }
 
-  // Disable dead RSS feeds in existing DBs
+  // Disable dead RSS/URL feeds in existing DBs
   db.run(`
     UPDATE data_sources SET enabled = 0
     WHERE url IN (
       'https://www.theroar.com.au/afl/feed/',
-      'https://www.sportingnews.com/au/afl/rss'
+      'https://www.sportingnews.com/au/afl/rss',
+      'https://www.nrl.com/news/rss',
+      'https://www.foxsports.com.au/rss/nrl',
+      'https://www.zerotackle.com/news/feed/',
+      'https://www.theroar.com.au/nrl/feed/',
+      'https://www.nrl.com/draw/nrl-premiership/2026/',
+      'https://www.nrl.com/ladder/nrl-premiership/2026/'
     )
   `);
 
@@ -167,45 +173,10 @@ function seedDefaultSources() {
     },
     // ── NRL sources ───────────────────────────────────────────────────────────
     {
-      name: "NRL.com News",
+      name: "ABC Sport NRL",
       type: "rss",
-      url: "https://www.nrl.com/news/rss",
-      description: "Official NRL news feed",
-      sport: "nrl",
-    },
-    {
-      name: "Fox Sports NRL",
-      type: "rss",
-      url: "https://www.foxsports.com.au/rss/nrl",
-      description: "Fox Sports NRL news and analysis",
-      sport: "nrl",
-    },
-    {
-      name: "Zero Tackle",
-      type: "rss",
-      url: "https://www.zerotackle.com/news/feed/",
-      description: "Zero Tackle NRL news and analysis",
-      sport: "nrl",
-    },
-    {
-      name: "The Roar NRL",
-      type: "rss",
-      url: "https://www.theroar.com.au/nrl/feed/",
-      description: "The Roar NRL analysis and opinions",
-      sport: "nrl",
-    },
-    {
-      name: "NRL.com Draw",
-      type: "url",
-      url: "https://www.nrl.com/draw/nrl-premiership/2026/",
-      description: "NRL 2026 draw and fixtures",
-      sport: "nrl",
-    },
-    {
-      name: "NRL Ladder",
-      type: "url",
-      url: "https://www.nrl.com/ladder/nrl-premiership/2026/",
-      description: "Current NRL season ladder",
+      url: "https://www.abc.net.au/news/feed/51120/rss.xml",
+      description: "ABC Sport NRL news and analysis",
       sport: "nrl",
     },
   ];
