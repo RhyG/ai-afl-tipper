@@ -3,21 +3,27 @@ import { streamSSE } from "hono/streaming";
 import { renderToString } from "hono/jsx/dom/server";
 import { generateTipForFixture, getFixturesForRound, getTipForFixture } from "../services/tipper";
 import { detectCurrentRound } from "../services/squiggle";
+import { detectCurrentNRLRound } from "../services/nrl";
 import { subscribe, getHistory, clearHistory } from "../services/log-stream";
 import { FixtureCard } from "../views/components/fixture-card";
 import { TipDetail } from "../views/components/tip-detail";
 import { getDb } from "../db/client";
 import type { Fixture, Tip } from "../services/tipper";
+import { parseSport } from "../sports";
 
 const app = new Hono();
 
-// Bulk generate for all untipped games — respects ?round=&year= for cross-round use
+// Bulk generate for all untipped games
 app.post("/generate/bulk", async (c) => {
-  const current = await detectCurrentRound();
+  const sport = parseSport(c.req.query("sport"));
+  const current = sport === "nrl"
+    ? await detectCurrentNRLRound()
+    : await detectCurrentRound();
+
   const round = parseInt(c.req.query("round") ?? String(current.round), 10);
   const year = parseInt(c.req.query("year") ?? String(current.year), 10);
 
-  const fixtures = getFixturesForRound(round, year);
+  const fixtures = getFixturesForRound(round, year, sport);
   const untipped = fixtures.filter((f) => {
     const tip = getTipForFixture(f.id);
     return !tip && !f.is_complete;
@@ -32,8 +38,7 @@ app.post("/generate/bulk", async (c) => {
     }
   }
 
-  // Re-fetch all fixtures and tips for full grid render
-  const allFixtures = getFixturesForRound(round, year);
+  const allFixtures = getFixturesForRound(round, year, sport);
   const cards = allFixtures.map((f) => {
     const tip = getTipForFixture(f.id);
     const card = <FixtureCard fixture={f} tip={tip} />;
@@ -43,7 +48,7 @@ app.post("/generate/bulk", async (c) => {
   return c.html(cards.join(""));
 });
 
-// Generate tip for a single fixture
+// Generate tip for a single fixture (sport comes from fixture record)
 app.post("/generate/:fixtureId", async (c) => {
   const fixtureId = parseInt(c.req.param("fixtureId"), 10);
 
@@ -120,12 +125,10 @@ app.post("/clear", (c) => {
 // SSE stream for terminal
 app.get("/stream", (c) => {
   return streamSSE(c, async (stream) => {
-    // Replay recent history so the terminal isn't blank on open
     for (const line of getHistory()) {
       await stream.writeSSE({ data: JSON.stringify(line) });
     }
 
-    // Subscribe to live events
     await new Promise<void>((resolve) => {
       const unsub = subscribe(async (line) => {
         try {

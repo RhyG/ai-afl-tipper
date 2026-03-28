@@ -9,10 +9,12 @@ import {
   buildLadder,
   getRecentForm,
   getH2HHistory,
-  type SquiggleGame,
 } from "./squiggle";
-import { fetchAFLOdds, findGameOdds, formatOddsForPrompt } from "./odds";
+import { fetchAllNRLGamesForYear } from "./nrl";
+import { fetchOdds, findGameOdds, formatOddsForPrompt } from "./odds";
 import type { GameContext } from "./ai/provider";
+import { SPORTS, type SportId } from "../sports";
+import type { GameRecord } from "./game-record";
 
 export interface Fixture {
   id: number;
@@ -27,7 +29,8 @@ export interface Fixture {
   away_score: number | null;
   winner: string | null;
   is_complete: number;
-  complete: number; // 0–100 from Squiggle
+  complete: number;
+  sport: string;
   synced_at: string;
 }
 
@@ -50,8 +53,9 @@ function pad(n: number, width: number) {
 }
 
 function buildStructuredContext(
-  allGames: SquiggleGame[],
-  fixture: Fixture
+  allGames: GameRecord[],
+  fixture: Fixture,
+  sportLabel: string
 ): { name: string; type: string; content: string } {
   const { home_team, away_team, round, year } = fixture;
 
@@ -61,7 +65,7 @@ function buildStructuredContext(
   const priorGames = allGames.filter((g) => g.round < round);
   const ladder = buildLadder(priorGames);
 
-  lines.push(`=== ${year} AFL LADDER (after Round ${round - 1}) ===`);
+  lines.push(`=== ${year} ${sportLabel} LADDER (after Round ${round - 1}) ===`);
   if (ladder.length === 0) {
     lines.push("No completed games yet this season");
   } else {
@@ -148,14 +152,17 @@ export async function generateTipForFixture(fixtureId: number): Promise<Tip> {
 
   if (!fixture) throw new Error(`Fixture ${fixtureId} not found`);
 
+  const sportId = (fixture.sport ?? "afl") as SportId;
+  const sport = SPORTS[sportId] ?? SPORTS.afl;
+
   emit({ type: "info", text: `\n── ${fixture.home_team} vs ${fixture.away_team} ──\n` });
 
   const sources = db
     .query<
       { id: number; name: string; type: string; url: string; description: string; enabled: number },
-      []
-    >("SELECT * FROM data_sources WHERE enabled = 1")
-    .all();
+      [string]
+    >("SELECT * FROM data_sources WHERE enabled = 1 AND sport = ?")
+    .all(sport.id);
 
   emit({ type: "fetch", text: `Fetching ${sources.length} data source(s)...\n` });
   const fetchedSources = await fetchAllSources(sources);
@@ -166,8 +173,12 @@ export async function generateTipForFixture(fixtureId: number): Promise<Tip> {
   let allSources = fetchedSources;
   try {
     emit({ type: "fetch", text: `Building structured game context...\n` });
-    const allGames = await fetchAllGamesForYear(fixture.year);
-    const structuredContext = buildStructuredContext(allGames, fixture);
+    const allGames: GameRecord[] =
+      sport.id === "nrl"
+        ? await fetchAllNRLGamesForYear(fixture.year)
+        : await fetchAllGamesForYear(fixture.year);
+
+    const structuredContext = buildStructuredContext(allGames, fixture, sport.label);
     allSources = [structuredContext, ...fetchedSources];
     emit({ type: "fetch", text: `  ✓ Structured Game Context (${structuredContext.content.length} chars)\n` });
   } catch (err) {
@@ -178,12 +189,11 @@ export async function generateTipForFixture(fixtureId: number): Promise<Tip> {
   if (process.env.THE_ODDS_API_KEY) {
     try {
       emit({ type: "fetch", text: `Fetching bookmaker odds...\n` });
-      const allOdds = await fetchAFLOdds();
+      const allOdds = await fetchOdds(sport);
       const gameOdds = findGameOdds(allOdds, fixture.home_team, fixture.away_team);
       if (gameOdds && gameOdds.bookmakers.length > 0) {
         const oddsContent = formatOddsForPrompt(gameOdds, fixture.home_team, fixture.away_team);
         const oddsSource = { name: "Bookmaker Odds", type: "odds", content: oddsContent };
-        // Insert right after structured context (index 0) so it appears early in the prompt
         const [first, ...rest] = allSources;
         allSources = first ? [first, oddsSource, ...rest] : [oddsSource, ...rest];
         emit({
@@ -205,6 +215,7 @@ export async function generateTipForFixture(fixtureId: number): Promise<Tip> {
     gameDate: fixture.game_date,
     round: fixture.round,
     year: fixture.year,
+    sport,
   };
 
   const aiSettings = getAISettings();
@@ -239,12 +250,12 @@ export async function generateTipForFixture(fixtureId: number): Promise<Tip> {
   return tip;
 }
 
-export function getFixturesForRound(round: number, year: number): Fixture[] {
+export function getFixturesForRound(round: number, year: number, sport: SportId = "afl"): Fixture[] {
   return getDb()
-    .query<Fixture, [number, number]>(
-      "SELECT * FROM fixtures WHERE round = ? AND year = ? ORDER BY game_date ASC"
+    .query<Fixture, [number, number, string]>(
+      "SELECT * FROM fixtures WHERE round = ? AND year = ? AND sport = ? ORDER BY game_date ASC"
     )
-    .all(round, year);
+    .all(round, year, sport);
 }
 
 export function getTipForFixture(fixtureId: number): Tip | null {
@@ -253,10 +264,10 @@ export function getTipForFixture(fixtureId: number): Tip | null {
     .get(fixtureId);
 }
 
-export function getAvailableRounds(): Array<{ round: number; year: number }> {
+export function getAvailableRounds(sport: SportId = "afl"): Array<{ round: number; year: number }> {
   return getDb()
-    .query<{ round: number; year: number }, []>(
-      "SELECT DISTINCT round, year FROM fixtures ORDER BY year DESC, round DESC"
+    .query<{ round: number; year: number }, [string]>(
+      "SELECT DISTINCT round, year FROM fixtures WHERE sport = ? ORDER BY year DESC, round DESC"
     )
-    .all();
+    .all(sport);
 }

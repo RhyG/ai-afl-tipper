@@ -4,6 +4,7 @@ import { getDb } from "../db/client";
 import { getAISettings } from "../services/runtime-config";
 import { SourceRow } from "../views/components/source-row";
 import { SourcesPage } from "../views/sources-page";
+import { parseSport } from "../sports";
 
 interface Source {
   id: number;
@@ -12,6 +13,7 @@ interface Source {
   url: string;
   description: string;
   enabled: number;
+  sport: string;
   last_validation_status?: string;
   last_validated_at?: string;
   last_validation_error?: string;
@@ -20,23 +22,37 @@ interface Source {
 const app = new Hono();
 
 app.get("/", (c) => {
+  const sport = parseSport(c.req.query("sport"));
   const db = getDb();
-  const sources = db.query<Source, []>("SELECT * FROM data_sources ORDER BY id ASC").all();
+  const sources = db
+    .query<Source, [string]>("SELECT * FROM data_sources WHERE sport = ? ORDER BY id ASC")
+    .all(sport);
   const aiSettings = getAISettings();
-  const page = <SourcesPage sources={sources} aiProvider={aiSettings.provider} aiModel={aiSettings.model} />;
+  const page = (
+    <SourcesPage
+      sources={sources}
+      aiProvider={aiSettings.provider}
+      aiModel={aiSettings.model}
+      sport={sport}
+    />
+  );
   return c.html("<!DOCTYPE html>" + renderToString(page as any));
 });
 
-// Partial: just the tbody rows — used by HTMX to refresh after startup validation
+// Partial: tbody rows — used by HTMX to refresh after startup validation
 app.get("/rows", (c) => {
+  const sport = parseSport(c.req.query("sport"));
   const db = getDb();
-  const sources = db.query<Source, []>("SELECT * FROM data_sources ORDER BY id ASC").all();
+  const sources = db
+    .query<Source, [string]>("SELECT * FROM data_sources WHERE sport = ? ORDER BY id ASC")
+    .all(sport);
   const rows = sources.map((s) => <SourceRow source={s} />);
   return c.html(renderToString(<>{rows}</> as any));
 });
 
 app.post("/", async (c) => {
   const body = await c.req.parseBody();
+  const sport = parseSport(body.sport as string | undefined);
   const name = (body.name as string)?.trim();
   const type = (body.type as string)?.trim();
   const url = (body.url as string)?.trim();
@@ -49,8 +65,8 @@ app.post("/", async (c) => {
   const db = getDb();
   try {
     const result = db.run(
-      "INSERT INTO data_sources (name, type, url, description) VALUES (?, ?, ?, ?)",
-      [name, type, url, description]
+      "INSERT INTO data_sources (name, type, url, description, sport) VALUES (?, ?, ?, ?, ?)",
+      [name, type, url, description, sport]
     );
     const source = db
       .query<Source, [number]>("SELECT * FROM data_sources WHERE id = ?")
@@ -77,7 +93,7 @@ app.post("/:id/toggle", (c) => {
 app.delete("/:id", (c) => {
   const id = parseInt(c.req.param("id"), 10);
   getDb().run("DELETE FROM data_sources WHERE id = ?", [id]);
-  return c.html(""); // HTMX swap removes the row
+  return c.html("");
 });
 
 export { app as sourcesRouter };

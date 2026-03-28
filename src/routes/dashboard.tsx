@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { detectCurrentRound, fetchFixtures } from "../services/squiggle";
+import { detectCurrentNRLRound, fetchNRLFixtures } from "../services/nrl";
 import { getDb } from "../db/client";
 import { getFixturesForRound, getTipForFixture } from "../services/tipper";
 import type { Fixture, Tip } from "../services/tipper";
@@ -8,10 +9,11 @@ import { getAISettings } from "../services/runtime-config";
 import { isValidating } from "../services/startup-state";
 import { Dashboard } from "../views/dashboard";
 import { RoundView } from "../views/round-view";
+import { SPORTS, parseSport, type SportId } from "../sports";
+import type { GameRecord } from "../services/game-record";
 
 const app = new Hono();
 
-const MAX_ROUND = 24;
 // How many rounds ahead of current to allow browsing
 const UPCOMING_ROUNDS = 2;
 
@@ -33,22 +35,28 @@ function isStale(fixtures: Fixture[]): boolean {
   return age > 60 * 60 * 1000;
 }
 
-export async function syncFixtures(round: number, year: number) {
+export async function syncFixtures(round: number, year: number, sport: SportId = "afl") {
   const db = getDb();
-  const games = await fetchFixtures(round, year);
+
+  let games: GameRecord[];
+  if (sport === "nrl") {
+    games = await fetchNRLFixtures(round, year);
+  } else {
+    games = await fetchFixtures(round, year);
+  }
 
   const upsert = db.prepare(`
     INSERT INTO fixtures
-      (squiggle_id, round, year, home_team, away_team, venue, game_date, home_score, away_score, winner, is_complete, complete, synced_at)
-    VALUES ($squiggle_id, $round, $year, $home_team, $away_team, $venue, $game_date, $home_score, $away_score, $winner, $is_complete, $complete, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+      (squiggle_id, round, year, home_team, away_team, venue, game_date, home_score, away_score, winner, is_complete, complete, sport, synced_at)
+    VALUES ($squiggle_id, $round, $year, $home_team, $away_team, $venue, $game_date, $home_score, $away_score, $winner, $is_complete, $complete, $sport, strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
     ON CONFLICT(squiggle_id) DO UPDATE SET
-      home_score = excluded.home_score,
-      away_score = excluded.away_score,
-      winner     = excluded.winner,
+      home_score  = excluded.home_score,
+      away_score  = excluded.away_score,
+      winner      = excluded.winner,
       is_complete = excluded.is_complete,
-      complete   = excluded.complete,
-      venue      = excluded.venue,
-      synced_at  = excluded.synced_at
+      complete    = excluded.complete,
+      venue       = excluded.venue,
+      synced_at   = excluded.synced_at
   `);
 
   for (const game of games) {
@@ -65,18 +73,23 @@ export async function syncFixtures(round: number, year: number) {
       $winner: game.winner ?? null,
       $is_complete: game.complete === 100 ? 1 : 0,
       $complete: game.complete,
+      $sport: sport,
     });
   }
 }
 
-async function getRoundData(round: number, year: number) {
-  let fixtures = getFixturesForRound(round, year);
+async function detectRound(sport: SportId): Promise<{ round: number; year: number }> {
+  return sport === "nrl" ? detectCurrentNRLRound() : detectCurrentRound();
+}
+
+async function getRoundData(round: number, year: number, sport: SportId) {
+  let fixtures = getFixturesForRound(round, year, sport);
   if (isStale(fixtures)) {
     try {
-      await syncFixtures(round, year);
-      fixtures = getFixturesForRound(round, year);
+      await syncFixtures(round, year, sport);
+      fixtures = getFixturesForRound(round, year, sport);
     } catch (err) {
-      console.error(`Auto-sync failed for round ${round}:`, err);
+      console.error(`Auto-sync failed for round ${round} (${sport}):`, err);
     }
   }
   const tips = buildTipsMap(fixtures);
@@ -86,7 +99,7 @@ async function getRoundData(round: number, year: number) {
   return { fixtures, tips, lastSyncedAt };
 }
 
-// Startup validation overlay status — polled by HTMX on every page
+// Startup validation overlay — polled by HTMX on every page
 app.get("/status/startup", (c) => {
   if (isValidating()) {
     return c.html(
@@ -107,11 +120,13 @@ app.get("/status/startup", (c) => {
   return c.html(`<div id="startup-overlay"></div>`);
 });
 
-// Main dashboard — always shows current round
+// Main dashboard — always shows current round for the selected sport
 app.get("/", async (c) => {
-  const current = await detectCurrentRound();
-  const { fixtures, tips, lastSyncedAt } = await getRoundData(current.round, current.year);
-  const maxRound = Math.min(MAX_ROUND, current.round + UPCOMING_ROUNDS);
+  const sport = parseSport(c.req.query("sport"));
+  const sportConfig = SPORTS[sport];
+  const current = await detectRound(sport);
+  const { fixtures, tips, lastSyncedAt } = await getRoundData(current.round, current.year, sport);
+  const maxRound = Math.min(sportConfig.maxRounds, current.round + UPCOMING_ROUNDS);
 
   const aiSettings = getAISettings();
   const page = (
@@ -126,6 +141,7 @@ app.get("/", async (c) => {
       lastSyncedAt={lastSyncedAt}
       aiProvider={aiSettings.provider}
       aiModel={aiSettings.model}
+      sport={sport}
     />
   );
   return c.html("<!DOCTYPE html>" + renderToString(page as any));
@@ -135,14 +151,16 @@ app.get("/", async (c) => {
 app.get("/rounds/:year/:round", async (c) => {
   const round = parseInt(c.req.param("round"), 10);
   const year = parseInt(c.req.param("year"), 10);
-  const current = await detectCurrentRound();
-  const maxRound = Math.min(MAX_ROUND, current.round + UPCOMING_ROUNDS);
+  const sport = parseSport(c.req.query("sport"));
+  const sportConfig = SPORTS[sport];
+  const current = await detectRound(sport);
+  const maxRound = Math.min(sportConfig.maxRounds, current.round + UPCOMING_ROUNDS);
 
-  if (isNaN(round) || isNaN(year) || round < 1 || round > MAX_ROUND) {
-    return c.redirect("/");
+  if (isNaN(round) || isNaN(year) || round < 1 || round > sportConfig.maxRounds) {
+    return c.redirect(`/?sport=${sport}`);
   }
 
-  const { fixtures, tips, lastSyncedAt } = await getRoundData(round, year);
+  const { fixtures, tips, lastSyncedAt } = await getRoundData(round, year, sport);
   const isHtmx = c.req.header("HX-Request") === "true";
   const roundViewProps = {
     round, year,
@@ -152,6 +170,7 @@ app.get("/rounds/:year/:round", async (c) => {
     fixtures,
     tips,
     lastSyncedAt,
+    sport,
   };
 
   if (isHtmx) {

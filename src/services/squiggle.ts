@@ -1,19 +1,10 @@
+import type { GameRecord } from "./game-record";
+
 const BASE_URL = "https://api.squiggle.com.au/";
 const USER_AGENT = "AFL-AI-Tipper/1.0 (contact: local-app)";
 
-export interface SquiggleGame {
-  id: number;
-  round: number;
-  year: number;
-  hteam: string;
-  ateam: string;
-  venue: string;
-  date: string;
-  hscore: number | null;
-  ascore: number | null;
-  winner: string | null;
-  complete: number; // 0-100, 100 = complete
-}
+// SquiggleGame is the canonical game record shape, shared with the NRL service
+export type SquiggleGame = GameRecord;
 
 export interface SquiggleTip {
   gameid: number;

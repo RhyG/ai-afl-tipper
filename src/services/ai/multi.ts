@@ -4,14 +4,22 @@ import { ClaudeProvider, TipResultSchema, streamClaudeRaw } from "./claude";
 import { OpenAIProvider } from "./openai";
 import type { AIProvider, GameContext, SourceContent, TipResult } from "./provider";
 
-const SYNTHESIS_SYSTEM_PROMPT = `You are a senior AFL tipping panel chair. Two independent AI analysts have reviewed the same match data and produced separate analyses.
+import type { SportConfig } from "../../sports";
+
+function buildSynthesisPrompt(sport: SportConfig): string {
+  const hasSquiggle = sport.id === "afl";
+  const modelSignal = hasSquiggle
+    ? "bookmaker implied probability > Squiggle model consensus > recent form > H2H history > news"
+    : "bookmaker implied probability > statistical model consensus > recent form > H2H history > news";
+
+  return `You are a senior ${sport.fullLabel} tipping panel chair. Two independent AI analysts have reviewed the same match data and produced separate analyses.
 
 Your task is to synthesise their findings into a single final verdict.
 
 - If they AGREE on the winner: write a unified case drawing on the strongest arguments from both. Set confidence as the average of theirs plus 5, capped at 95.
 - If they DISAGREE: carefully evaluate each argument against the source data. Identify which case has stronger evidential support. Explain what the other analyst missed or over-weighted. Set confidence to reflect the genuine uncertainty.
 
-Signal weighting reminder — when arbitrating disagreements, trust sources in this order: bookmaker implied probability > Squiggle model consensus > recent form > H2H history > news. If an analyst tips against the bookmaker favourite, scrutinise their reasoning for over-reliance on a single recent result or speculative injury news.
+Signal weighting reminder — when arbitrating disagreements, trust sources in this order: ${modelSignal}. If an analyst tips against the bookmaker favourite, scrutinise their reasoning for over-reliance on a single recent result or speculative injury news.
 
 In your reasoning field, briefly note each analyst's position and key arguments BEFORE presenting your synthesis. This deliberation is what makes the multi-model approach valuable.
 
@@ -26,6 +34,7 @@ You MUST respond with a single valid JSON object in the same format as the indiv
 }
 
 Do not include any text outside the JSON object.`;
+}
 
 export class MultiProvider implements AIProvider {
   readonly providerName = "multi";
@@ -58,6 +67,7 @@ export class MultiProvider implements AIProvider {
     emit({ type: "info", text: `\n\n━━ SYNTHESIS: ${verdict} ━━\n\n` });
 
     // ── Synthesis ────────────────────────────────────────────────────────────
+    const synthesisSystem = buildSynthesisPrompt(gameContext.sport);
     const synthesisUser = `
 Game: ${gameContext.homeTeam} vs ${gameContext.awayTeam}
 Venue: ${gameContext.venue}
@@ -92,7 +102,7 @@ Synthesise these analyses and return your final tip as JSON.`.trim();
     const rawText = await streamClaudeRaw(
       this.anthropicClient,
       "claude-opus-4-6",
-      SYNTHESIS_SYSTEM_PROMPT,
+      synthesisSystem,
       synthesisUser,
       3000
     );

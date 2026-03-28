@@ -3,8 +3,9 @@ import { logger } from "hono/logger";
 import { config } from "./config";
 import { runMigrations } from "./db/schema";
 import { detectCurrentRound } from "./services/squiggle";
+import { detectCurrentNRLRound } from "./services/nrl";
 import { getFixturesForRound } from "./services/tipper";
-import { dashboardRouter, syncFixtures } from "./routes/dashboard.tsx"; // syncFixtures used in startup
+import { dashboardRouter, syncFixtures } from "./routes/dashboard.tsx";
 import { validateAllSources } from "./services/data-fetcher";
 import { setValidating } from "./services/startup-state";
 import { fixturesRouter } from "./routes/fixtures.tsx";
@@ -31,23 +32,44 @@ app.route("/settings", settingsRouter);
 app.route("/odds", oddsRouter);
 
 const port = config.port;
-console.log("🏈 AFL AI Tipper starting up...");
+console.log("🏈🏉 AI Tipper starting up...");
 
-// Kick off round detection immediately (non-blocking) so it's warm before first request
+// Kick off round detection for both sports (non-blocking)
 (async () => {
   try {
-    const round = await detectCurrentRound();
-    console.log(`📅 Current round: Round ${round.round}, ${round.year}`);
+    // ── AFL startup ──────────────────────────────────────────────────────────
+    const aflRound = await detectCurrentRound();
+    console.log(`📅 AFL current round: Round ${aflRound.round}, ${aflRound.year}`);
 
-    const fixtures = getFixturesForRound(round.round, round.year);
-    if (fixtures.length === 0) {
-      console.log("📥 No fixtures — syncing from Squiggle...");
-      await syncFixtures(round.round, round.year);
-      const synced = getFixturesForRound(round.round, round.year);
-      console.log(`✅ Synced ${synced.length} fixtures`);
+    const aflFixtures = getFixturesForRound(aflRound.round, aflRound.year, "afl");
+    if (aflFixtures.length === 0) {
+      console.log("📥 AFL: no fixtures cached — syncing...");
+      await syncFixtures(aflRound.round, aflRound.year, "afl");
+      const synced = getFixturesForRound(aflRound.round, aflRound.year, "afl");
+      console.log(`✅ AFL: synced ${synced.length} fixtures`);
     } else {
-      console.log(`✅ ${fixtures.length} fixtures cached`);
+      console.log(`✅ AFL: ${aflFixtures.length} fixtures cached`);
     }
+
+    // ── NRL startup ──────────────────────────────────────────────────────────
+    try {
+      const nrlRound = await detectCurrentNRLRound();
+      console.log(`📅 NRL current round: Round ${nrlRound.round}, ${nrlRound.year}`);
+
+      const nrlFixtures = getFixturesForRound(nrlRound.round, nrlRound.year, "nrl");
+      if (nrlFixtures.length === 0) {
+        console.log("📥 NRL: no fixtures cached — syncing...");
+        await syncFixtures(nrlRound.round, nrlRound.year, "nrl");
+        const synced = getFixturesForRound(nrlRound.round, nrlRound.year, "nrl");
+        console.log(`✅ NRL: synced ${synced.length} fixtures`);
+      } else {
+        console.log(`✅ NRL: ${nrlFixtures.length} fixtures cached`);
+      }
+    } catch (err) {
+      console.warn(`⚠️  NRL startup skipped: ${err}`);
+    }
+
+    // ── Source validation (both sports) ─────────────────────────────────────
     console.log("🔍 Validating data sources...");
     setValidating(true);
     try {
@@ -62,6 +84,7 @@ console.log("🏈 AFL AI Tipper starting up...");
     }
   } catch (err) {
     console.error("❌ Startup task failed:", err);
+    setValidating(false);
   }
 })();
 

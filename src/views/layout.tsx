@@ -1,38 +1,36 @@
 import type { FC } from "hono/jsx";
 import { PROVIDER_MODELS } from "../services/runtime-config";
+import { SPORTS, type SportId } from "../sports";
 
 interface LayoutProps {
   title?: string;
   currentPath?: string;
   aiProvider?: string;
   aiModel?: string;
+  sport?: SportId;
   children?: unknown;
 }
 
 export const Layout: FC<LayoutProps> = ({
-  title = "AFL AI Tipper",
+  title,
   currentPath = "/",
   aiProvider = "claude",
   aiModel = "claude-opus-4-6",
+  sport = "afl",
   children,
 }) => {
   const models = PROVIDER_MODELS[aiProvider] ?? [];
+  const sportConfig = SPORTS[sport];
+  const pageTitle = title ?? `${sportConfig.label} AI Tipper`;
 
   return (
     <html lang="en">
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>{title}</title>
+        <title>{pageTitle}</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-        <script dangerouslySetInnerHTML={{
-          __html: `
-            tailwind.config = {
-              theme: { extend: { colors: { afl: { blue: '#003087', gold: '#FFB81C' } } } }
-            }
-          `
-        }} />
         <style dangerouslySetInnerHTML={{
           __html: `
             .htmx-indicator { opacity: 0; transition: opacity 200ms ease-in; }
@@ -45,7 +43,7 @@ export const Layout: FC<LayoutProps> = ({
         }} />
       </head>
       <body class="bg-gray-950 text-gray-100 min-h-screen">
-        {/* Startup validation overlay — polls server until cleared */}
+        {/* Startup validation overlay */}
         <div
           id="startup-overlay"
           hx-get="/status/startup"
@@ -56,13 +54,30 @@ export const Layout: FC<LayoutProps> = ({
           <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16 gap-4">
 
-              {/* Brand */}
-              <div class="flex items-center gap-2 shrink-0">
-                <span class="text-2xl">🏈</span>
-                <span class="text-xl font-bold text-white">AFL AI Tipper</span>
+              {/* Brand + sport toggle */}
+              <div class="flex items-center gap-3 shrink-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-2xl">{sportConfig.emoji}</span>
+                  <span class="text-lg font-bold text-white hidden sm:block">AI Tipper</span>
+                </div>
+                {/* Sport toggle */}
+                <div class="flex rounded-lg overflow-hidden border border-gray-700 text-xs font-semibold">
+                  {(Object.values(SPORTS) as typeof SPORTS[SportId][]).map((s) => (
+                    <a
+                      href={`/?sport=${s.id}`}
+                      class={`px-3 py-1.5 transition-colors ${
+                        s.id === sport
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700"
+                      }`}
+                    >
+                      {s.emoji} {s.label}
+                    </a>
+                  ))}
+                </div>
               </div>
 
-              {/* AI provider settings — inline in nav */}
+              {/* AI provider settings */}
               <form
                 class="flex items-center gap-2"
                 hx-post="/settings/ai"
@@ -107,7 +122,7 @@ export const Layout: FC<LayoutProps> = ({
               {/* Nav links */}
               <div class="flex gap-1 shrink-0">
                 <a
-                  href="/"
+                  href={`/?sport=${sport}`}
                   class={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     currentPath === "/" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"
                   }`}
@@ -115,7 +130,7 @@ export const Layout: FC<LayoutProps> = ({
                   Dashboard
                 </a>
                 <a
-                  href="/sources"
+                  href={`/sources?sport=${sport}`}
                   class={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     currentPath === "/sources" ? "bg-blue-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-800"
                   }`}
@@ -149,7 +164,7 @@ export const Layout: FC<LayoutProps> = ({
                 <span class="w-3 h-3 rounded-full bg-yellow-500/80" />
                 <span class="w-3 h-3 rounded-full bg-green-500/80" />
               </div>
-              <span class="text-xs text-gray-400 font-mono ml-1">afl-tipper — ai output</span>
+              <span class="text-xs text-gray-400 font-mono ml-1">ai-tipper — output</span>
               <span id="terminal-live-dot" class="hidden w-2 h-2 rounded-full bg-green-400 animate-pulse ml-1" />
             </div>
             <div class="flex items-center gap-3">
@@ -173,7 +188,7 @@ export const Layout: FC<LayoutProps> = ({
           </div>
         </div>
 
-        {/* Terminal toggle FAB (always visible) */}
+        {/* Terminal toggle FAB */}
         <button
           onclick="toggleTerminal()"
           class="fixed bottom-4 right-4 z-40 bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-400 hover:text-white text-xs font-mono px-3 py-2 rounded-lg shadow-lg transition-colors flex items-center gap-2"
@@ -187,8 +202,6 @@ export const Layout: FC<LayoutProps> = ({
         <script dangerouslySetInnerHTML={{ __html: `
           let _termOpen = false;
           let _es = null;
-          let _buffer = '';
-          let _flushTimer = null;
 
           const TEXT_COLORS = {
             info:  'text-gray-400',
@@ -249,7 +262,6 @@ export const Layout: FC<LayoutProps> = ({
 
           function appendText(type, text) {
             const out = document.getElementById('terminal-output');
-            // Remove placeholder
             const placeholder = out.querySelector('.text-gray-600');
             if (placeholder && out.children.length === 1) placeholder.remove();
 
@@ -261,7 +273,6 @@ export const Layout: FC<LayoutProps> = ({
             out.scrollTop = out.scrollHeight;
           }
 
-          // Connect SSE on load so history is immediately available if terminal opens
           window.addEventListener('load', () => connectSSE());
         `}} />
       </body>

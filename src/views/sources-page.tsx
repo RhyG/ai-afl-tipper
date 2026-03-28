@@ -1,6 +1,7 @@
 import type { FC } from "hono/jsx";
 import { Layout } from "./layout";
 import { SourceRow } from "./components/source-row";
+import { SPORTS, type SportId } from "../sports";
 
 interface Source {
   id: number;
@@ -9,6 +10,7 @@ interface Source {
   url: string;
   description: string;
   enabled: number;
+  sport: string;
   last_validation_status?: string;
   last_validated_at?: string;
   last_validation_error?: string;
@@ -18,14 +20,40 @@ interface SourcesPageProps {
   sources: Source[];
   aiProvider?: string;
   aiModel?: string;
+  sport?: SportId;
 }
 
-export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel }) => {
+export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel, sport = "afl" }) => {
+  const sportConfig = SPORTS[sport];
+  const typeOptions =
+    sport === "afl"
+      ? [
+          { value: "rss", label: "RSS" },
+          { value: "api", label: "API" },
+          { value: "url", label: "URL" },
+          { value: "squiggle-tips", label: "Squiggle Tips" },
+        ]
+      : [
+          { value: "rss", label: "RSS" },
+          { value: "api", label: "API" },
+          { value: "url", label: "URL" },
+        ];
+
   return (
-    <Layout title="Data Sources — AFL AI Tipper" currentPath="/sources" aiProvider={aiProvider} aiModel={aiModel}>
+    <Layout
+      title={`Data Sources — ${sportConfig.label} AI Tipper`}
+      currentPath="/sources"
+      aiProvider={aiProvider}
+      aiModel={aiModel}
+      sport={sport}
+    >
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-white">Data Sources</h1>
-        <span class="text-sm text-gray-500">{sources.filter((s) => s.enabled).length} active</span>
+        <div>
+          <h1 class="text-2xl font-bold text-white">
+            {sportConfig.emoji} {sportConfig.label} Data Sources
+          </h1>
+          <p class="text-sm text-gray-500 mt-1">{sources.filter((s) => s.enabled).length} active</p>
+        </div>
       </div>
 
       {/* Table */}
@@ -43,7 +71,7 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
           </thead>
           <tbody
             id="sources-table"
-            hx-get="/sources/rows"
+            hx-get={`/sources/rows?sport=${sport}`}
             hx-trigger="startupComplete from:body"
             hx-swap="innerHTML"
           >
@@ -56,7 +84,7 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
 
       {/* Add source form */}
       <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <h2 class="text-base font-semibold text-white mb-4">Add New Source</h2>
+        <h2 class="text-base font-semibold text-white mb-4">Add New {sportConfig.label} Source</h2>
         <form
           hx-post="/sources"
           hx-target="#sources-table"
@@ -64,13 +92,14 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
           hx-on--after-request="this.reset()"
           class="grid grid-cols-1 sm:grid-cols-2 gap-4"
         >
+          <input type="hidden" name="sport" value={sport} />
           <div>
             <label class="block text-xs text-gray-400 mb-1.5">Name</label>
             <input
               type="text"
               name="name"
               required
-              placeholder="e.g. AFL Stats"
+              placeholder={`e.g. ${sportConfig.label} Stats`}
               class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -81,10 +110,9 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
               required
               class="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
             >
-              <option value="rss">RSS</option>
-              <option value="api">API</option>
-              <option value="url">URL</option>
-              <option value="squiggle-tips">Squiggle Tips</option>
+              {typeOptions.map((opt) => (
+                <option value={opt.value}>{opt.label}</option>
+              ))}
             </select>
           </div>
           <div class="sm:col-span-2">

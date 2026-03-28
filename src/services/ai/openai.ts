@@ -1,44 +1,8 @@
 import OpenAI from "openai";
-import { z } from "zod";
 import { emit } from "../log-stream";
 import type { AIProvider, GameContext, SourceContent, TipResult } from "./provider";
-
-const TipResultSchema = z.object({
-  tip: z.string(),
-  confidence: z.number().int().min(0).max(100),
-  reasoning: z.string(),
-  dataSummary: z.string(),
-  keyFactors: z.string(),
-  playerAvailability: z.string(),
-});
-
-const SYSTEM_PROMPT = `You are an expert AFL tipping analyst. Your job is to analyse provided data sources and pick the winner of each AFL game.
-
-You MUST respond with a single valid JSON object matching this exact shape:
-{
-  "tip": "<one of the two team names provided, exactly as given>",
-  "confidence": <integer 0-100>,
-  "reasoning": "<full written reasoning, 2-4 paragraphs>",
-  "dataSummary": "<newline-separated bullets, one per source: - [Source Name]: [key signal or 'no relevant info']>",
-  "keyFactors": "<newline-separated bullets, 3-5 decisive factors: - [factor]>",
-  "playerAvailability": "<newline-separated list of injured/suspended/unavailable players found in sources: - [Team]: [Player] ([injury/status]); if none found write 'None noted'>"
-}
-
-Signal weighting — when sources conflict, trust them in this order:
-1. Bookmaker odds (implied probability): market consensus aggregates enormous information; treat as your prior. If one team's implied probability exceeds 65%, you need strong counter-evidence to tip the other team.
-2. Squiggle model consensus: aggregated statistical model predictions; highly reliable.
-3. Recent form (last 3–5 games): directionally useful but noisy — do not over-weight a single result.
-4. Head-to-head and venue history: meaningful context, especially early in the season.
-5. News / injury reports: can override all of the above if a key player is confirmed out.
-If your tip disagrees with the bookmaker favourite, your reasoning MUST explicitly explain why.
-
-Rules:
-- "tip" must be EXACTLY one of the two team names given in the game context (not abbreviated)
-- "confidence" reflects your certainty: 50 = coin flip, 70 = reasonably confident, 90 = very confident
-- "dataSummary" must include one bullet per source consulted
-- "keyFactors" must have 3-5 bullets summarising the decisive factors
-- "playerAvailability" CRITICAL: scan every source for injuries, suspensions, "out", "unavailable", "doubt", "managed", "test", or "omitted". Name every affected player and their team. Missing key players is often the single most decisive factor — do not skip this.
-- Do not include any text outside the JSON object`;
+import { TipResultSchema, buildSystemPrompt } from "./claude";
+import type { SportConfig } from "../../sports";
 
 export class OpenAIProvider implements AIProvider {
   private client: OpenAI;
@@ -70,13 +34,14 @@ ${sourceBlock}
 
 Analyse the above and return your tip as a JSON object.`.trim();
 
-    return this.callWithRetry(userMessage);
+    return this.callWithRetry(userMessage, gameContext.sport);
   }
 
-  private async callWithRetry(userMessage: string, isRetry = false): Promise<TipResult> {
+  private async callWithRetry(userMessage: string, sport: SportConfig, isRetry = false): Promise<TipResult> {
+    const base = buildSystemPrompt(sport);
     const systemContent = isRetry
-      ? SYSTEM_PROMPT + "\n\nCRITICAL: Return ONLY the JSON object, nothing else whatsoever."
-      : SYSTEM_PROMPT;
+      ? base + "\n\nCRITICAL: Return ONLY the JSON object, nothing else whatsoever."
+      : base;
 
     let fullText = "";
 
@@ -102,7 +67,7 @@ Analyse the above and return your tip as a JSON object.`.trim();
     if (!jsonMatch) {
       if (!isRetry) {
         emit({ type: "info", text: "\n[retrying with stricter prompt...]\n" });
-        return this.callWithRetry(userMessage, true);
+        return this.callWithRetry(userMessage, sport, true);
       }
       throw new Error("AI response did not contain valid JSON");
     }

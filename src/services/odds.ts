@@ -1,32 +1,10 @@
-// Odds API v4 integration for AFL bookmaker prices
-// Free tier: 500 requests/month — responses are cached for 1 hour
+// The Odds API v4 integration — sport-agnostic
+// Free tier: 500 requests/month — responses are cached for 1 hour per sport
 
-const SPORT = "aussierules_afl";
+import type { SportConfig } from "../sports";
+
 const API_BASE = "https://api.the-odds-api.com/v4";
-
-// Mapping from Odds API full team names → Squiggle short names (18 clubs)
-const ODDS_TO_SQUIGGLE: Record<string, string> = {
-  "Adelaide Crows": "Adelaide",
-  "Brisbane Lions": "Brisbane",
-  "Carlton Blues": "Carlton",
-  "Collingwood Magpies": "Collingwood",
-  "Essendon Bombers": "Essendon",
-  "Fremantle Dockers": "Fremantle",
-  "Geelong Cats": "Geelong",
-  "Gold Coast Suns": "Gold Coast",
-  "Greater Western Sydney Giants": "GWS Giants",
-  "GWS Giants": "GWS Giants",
-  "Hawthorn Hawks": "Hawthorn",
-  "Melbourne Demons": "Melbourne",
-  "North Melbourne Kangaroos": "North Melbourne",
-  "North Melbourne": "North Melbourne",
-  "Port Adelaide Power": "Port Adelaide",
-  "Richmond Tigers": "Richmond",
-  "St Kilda Saints": "St Kilda",
-  "Sydney Swans": "Sydney",
-  "West Coast Eagles": "West Coast",
-  "Western Bulldogs": "Western Bulldogs",
-};
+const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
 interface OddsOutcome {
   name: string;
@@ -60,61 +38,59 @@ export interface BookmakerLine {
 }
 
 export interface GameOdds {
-  homeTeam: string; // Squiggle-normalized
+  homeTeam: string; // normalized to canonical team name
   awayTeam: string;
   bookmakers: BookmakerLine[];
-  avgHomeOdds: number | null; // mean across all bookmakers
+  avgHomeOdds: number | null;
   avgAwayOdds: number | null;
-  homeImpliedPct: number | null; // implied probability from average odds
+  homeImpliedPct: number | null;
   awayImpliedPct: number | null;
 }
 
-let oddsCache: { games: GameOdds[]; fetchedAt: number } | null = null;
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+// Per-sport odds cache
+const _oddsCache = new Map<string, { games: GameOdds[]; fetchedAt: number }>();
 
-function normalizeTeam(name: string): string {
-  if (ODDS_TO_SQUIGGLE[name]) return ODDS_TO_SQUIGGLE[name];
+function normalizeTeam(name: string, sport: SportConfig): string {
+  if (sport.teamNameMap[name]) return sport.teamNameMap[name];
   // Substring fallback for unexpected name variants
-  for (const squiggleName of Object.values(ODDS_TO_SQUIGGLE)) {
-    if (name.toLowerCase().includes(squiggleName.toLowerCase())) return squiggleName;
+  for (const canonical of Object.values(sport.teamNameMap)) {
+    if (name.toLowerCase().includes(canonical.toLowerCase())) return canonical;
   }
   return name;
 }
 
 function decimalToImplied(odds: number): number {
-  // Round to 1 decimal place, e.g. 1.85 → 54.1
   return Math.round((100 / odds) * 10) / 10;
 }
 
-export async function fetchAFLOdds(): Promise<GameOdds[]> {
-  if (oddsCache && Date.now() - oddsCache.fetchedAt < CACHE_TTL) {
-    return oddsCache.games;
-  }
+export async function fetchOdds(sport: SportConfig): Promise<GameOdds[]> {
+  const cached = _oddsCache.get(sport.id);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) return cached.games;
 
   const apiKey = process.env.THE_ODDS_API_KEY ?? "";
   if (!apiKey) return [];
 
-  const url = new URL(`${API_BASE}/sports/${SPORT}/odds/`);
+  const url = new URL(`${API_BASE}/sports/${sport.oddsKey}/odds/`);
   url.searchParams.set("apiKey", apiKey);
   url.searchParams.set("regions", "au");
   url.searchParams.set("markets", "h2h");
   url.searchParams.set("oddsFormat", "decimal");
 
   const res = await fetch(url.toString(), {
-    headers: { "User-Agent": "AFL-AI-Tipper/1.0" },
+    headers: { "User-Agent": "AFL-NRL-AI-Tipper/1.0" },
     signal: AbortSignal.timeout(15000),
   });
 
   if (!res.ok) throw new Error(`Odds API HTTP ${res.status}`);
 
   const remaining = res.headers.get("x-requests-remaining");
-  if (remaining) console.log(`[odds] ${remaining} API requests remaining this month`);
+  if (remaining) console.log(`[odds:${sport.id}] ${remaining} API requests remaining this month`);
 
   const events = (await res.json()) as OddsEvent[];
 
   const games: GameOdds[] = events.map((event) => {
-    const homeTeam = normalizeTeam(event.home_team);
-    const awayTeam = normalizeTeam(event.away_team);
+    const homeTeam = normalizeTeam(event.home_team, sport);
+    const awayTeam = normalizeTeam(event.away_team, sport);
 
     const bookmakers: BookmakerLine[] = [];
     for (const bk of event.bookmakers) {
@@ -132,7 +108,6 @@ export async function fetchAFLOdds(): Promise<GameOdds[]> {
     if (bookmakers.length > 0) {
       const sumHome = bookmakers.reduce((s, b) => s + b.homeOdds, 0);
       const sumAway = bookmakers.reduce((s, b) => s + b.awayOdds, 0);
-      // Round to 2 decimal places
       avgHomeOdds = Math.round((sumHome / bookmakers.length) * 100) / 100;
       avgAwayOdds = Math.round((sumAway / bookmakers.length) * 100) / 100;
     }
@@ -148,7 +123,7 @@ export async function fetchAFLOdds(): Promise<GameOdds[]> {
     };
   });
 
-  oddsCache = { games, fetchedAt: Date.now() };
+  _oddsCache.set(sport.id, { games, fetchedAt: Date.now() });
   return games;
 }
 
@@ -157,10 +132,9 @@ export function findGameOdds(
   homeTeam: string,
   awayTeam: string
 ): GameOdds | null {
-  // Try exact match first (home/away as-is)
   let match = games.find((g) => g.homeTeam === homeTeam && g.awayTeam === awayTeam);
   if (match) return match;
-  // Try reversed — Odds API may have home/away swapped vs Squiggle
+  // Try reversed — Odds API may have home/away swapped
   match = games.find((g) => g.homeTeam === awayTeam && g.awayTeam === homeTeam);
   return match ?? null;
 }
@@ -187,3 +161,4 @@ export function formatOddsForPrompt(
   }
   return lines.join("\n");
 }
+

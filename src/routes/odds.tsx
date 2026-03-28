@@ -1,9 +1,10 @@
 import { Hono } from "hono";
 import { renderToString } from "hono/jsx/dom/server";
 import { getDb } from "../db/client";
-import { fetchAFLOdds, findGameOdds } from "../services/odds";
+import { fetchOdds, findGameOdds } from "../services/odds";
 import { OddsDisplay } from "../views/components/odds-display";
 import type { Fixture } from "../services/tipper";
+import { SPORTS, type SportId } from "../sports";
 
 const app = new Hono();
 
@@ -21,7 +22,9 @@ app.get("/fixture/:fixtureId", async (c) => {
   }
 
   try {
-    const allOdds = await fetchAFLOdds();
+    const sportId = (fixture.sport ?? "afl") as SportId;
+    const sport = SPORTS[sportId] ?? SPORTS.afl;
+    const allOdds = await fetchOdds(sport);
     const odds = findGameOdds(allOdds, fixture.home_team, fixture.away_team);
     return c.html(
       renderToString(

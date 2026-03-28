@@ -3,6 +3,7 @@ import { FixtureCard } from "./components/fixture-card";
 import { RoundSummary } from "./components/round-summary";
 import { RoundNav } from "./components/round-nav";
 import type { Fixture, Tip } from "../services/tipper";
+import { SPORTS, type SportId } from "../sports";
 
 interface RoundViewProps {
   round: number;
@@ -13,6 +14,7 @@ interface RoundViewProps {
   fixtures: Fixture[];
   tips: Map<number, Tip>;
   lastSyncedAt?: string;
+  sport?: SportId;
 }
 
 export const RoundView: FC<RoundViewProps> = ({
@@ -24,11 +26,13 @@ export const RoundView: FC<RoundViewProps> = ({
   fixtures,
   tips,
   lastSyncedAt,
+  sport = "afl",
 }) => {
   const isCurrentRound = round === currentRound && year === currentYear;
   const isUpcoming = round > currentRound || year > currentYear;
   const untippedCount = fixtures.filter((f) => !tips.has(f.id) && !f.is_complete).length;
   const hasCompleted = fixtures.some((f) => f.is_complete);
+  const sportConfig = SPORTS[sport];
 
   return (
     <div>
@@ -40,6 +44,7 @@ export const RoundView: FC<RoundViewProps> = ({
           currentRound={currentRound}
           currentYear={currentYear}
           maxRound={maxRound}
+          sport={sport}
         />
         {lastSyncedAt && (
           <p class="text-xs text-gray-600 text-center mt-1">Synced: {lastSyncedAt}</p>
@@ -50,7 +55,7 @@ export const RoundView: FC<RoundViewProps> = ({
       <div class="flex flex-wrap justify-end gap-2 mb-4">
         {untippedCount > 0 && (
           <button
-            hx-post={`/tips/generate/bulk?round=${round}&year=${year}`}
+            hx-post={`/tips/generate/bulk?round=${round}&year=${year}&sport=${sport}`}
             hx-target="#fixture-grid"
             hx-swap="innerHTML"
             hx-indicator="#bulk-spinner"
@@ -62,7 +67,7 @@ export const RoundView: FC<RoundViewProps> = ({
         )}
         {(isCurrentRound || !isUpcoming) && (
           <button
-            hx-post={`/results/sync?round=${round}&year=${year}`}
+            hx-post={`/results/sync?round=${round}&year=${year}&sport=${sport}`}
             hx-target="#fixture-grid"
             hx-swap="innerHTML"
             class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -71,7 +76,7 @@ export const RoundView: FC<RoundViewProps> = ({
           </button>
         )}
         <button
-          hx-post={`/fixtures/sync?round=${round}&year=${year}`}
+          hx-post={`/fixtures/sync?round=${round}&year=${year}&sport=${sport}`}
           hx-target="#fixture-grid"
           hx-swap="innerHTML"
           class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
@@ -98,9 +103,9 @@ export const RoundView: FC<RoundViewProps> = ({
       <div id="fixture-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {fixtures.length === 0 ? (
           <div class="col-span-2 text-center py-16 text-gray-600">
-            <div class="text-4xl mb-3">🏈</div>
+            <div class="text-4xl mb-3">{sportConfig.emoji}</div>
             <div class="text-lg font-medium">No fixtures found</div>
-            <div class="text-sm mt-1">Click "Refresh Fixtures" to load from Squiggle</div>
+            <div class="text-sm mt-1">Click "Refresh Fixtures" to load from the {sportConfig.label} data source</div>
           </div>
         ) : (
           fixtures.map((f) => <FixtureCard fixture={f} tip={tips.get(f.id) ?? null} />)

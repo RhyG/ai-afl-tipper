@@ -1,3 +1,5 @@
+import type { SportConfig } from "../../sports";
+
 export interface GameContext {
   homeTeam: string;
   awayTeam: string;
@@ -5,6 +7,7 @@ export interface GameContext {
   gameDate: string;
   round: number;
   year: number;
+  sport: SportConfig;
 }
 
 export interface SourceContent {

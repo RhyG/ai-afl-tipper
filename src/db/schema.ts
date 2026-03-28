@@ -30,13 +30,19 @@ export function runMigrations() {
       winner TEXT,
       is_complete INTEGER NOT NULL DEFAULT 0,
       complete INTEGER NOT NULL DEFAULT 0,
+      sport TEXT NOT NULL DEFAULT 'afl',
       synced_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
     )
   `);
 
-  // Idempotent migration: add complete column to existing DBs
+  // Idempotent migrations for fixtures
   try {
     db.run("ALTER TABLE fixtures ADD COLUMN complete INTEGER NOT NULL DEFAULT 0");
+  } catch {
+    // Column already exists — safe to ignore
+  }
+  try {
+    db.run("ALTER TABLE fixtures ADD COLUMN sport TEXT NOT NULL DEFAULT 'afl'");
   } catch {
     // Column already exists — safe to ignore
   }
@@ -57,14 +63,19 @@ export function runMigrations() {
     )
   `);
 
-  // Idempotent migration: add player_availability to existing DBs
+  // Idempotent migrations for tips
   try {
     db.run("ALTER TABLE tips ADD COLUMN player_availability TEXT NOT NULL DEFAULT ''");
   } catch {
     // Column already exists — safe to ignore
   }
 
-  // Idempotent migration: add source validation columns
+  // Idempotent migrations for data_sources
+  try {
+    db.run("ALTER TABLE data_sources ADD COLUMN sport TEXT NOT NULL DEFAULT 'afl'");
+  } catch {
+    // Column already exists — safe to ignore
+  }
   try {
     db.run("ALTER TABLE data_sources ADD COLUMN last_validation_status TEXT NOT NULL DEFAULT 'unknown'");
   } catch {
@@ -103,54 +114,105 @@ export function runMigrations() {
 function seedDefaultSources() {
   const db = getDb();
 
-  const sources = [
+  const sources: Array<{ name: string; type: string; url: string; description: string; sport: string }> = [
+    // ── AFL sources ───────────────────────────────────────────────────────────
     {
       name: "Squiggle Model Tips",
       type: "squiggle-tips",
       url: "https://api.squiggle.com.au/",
       description: "Aggregated model tips from Squiggle's AFL prediction models",
+      sport: "afl",
     },
     {
       name: "AFL.com.au News",
       type: "rss",
       url: "https://www.afl.com.au/rss",
       description: "Official AFL news feed",
+      sport: "afl",
     },
     {
       name: "Fox Footy",
       type: "rss",
       url: "https://www.foxsports.com.au/rss/afl",
       description: "Fox Sports AFL news and analysis",
+      sport: "afl",
     },
     {
       name: "Zero Hanger",
       type: "rss",
       url: "https://www.zerohanger.com/feed/",
       description: "Zero Hanger AFL news feed",
+      sport: "afl",
     },
     {
       name: "Real Footy (The Age)",
       type: "rss",
       url: "https://www.theage.com.au/rss/sport/afl.xml",
       description: "The Age AFL coverage",
+      sport: "afl",
     },
     {
       name: "AFL Tables 2026",
       type: "url",
       url: "https://afltables.com/afl/seas/2026.html",
       description: "Season statistics and standings",
+      sport: "afl",
     },
     {
       name: "Footywire Ladder",
       type: "url",
       url: "https://www.footywire.com/afl/footy/ladder",
       description: "Current AFL season ladder and form from Footywire",
+      sport: "afl",
+    },
+    // ── NRL sources ───────────────────────────────────────────────────────────
+    {
+      name: "NRL.com News",
+      type: "rss",
+      url: "https://www.nrl.com/news/rss",
+      description: "Official NRL news feed",
+      sport: "nrl",
+    },
+    {
+      name: "Fox Sports NRL",
+      type: "rss",
+      url: "https://www.foxsports.com.au/rss/nrl",
+      description: "Fox Sports NRL news and analysis",
+      sport: "nrl",
+    },
+    {
+      name: "Zero Tackle",
+      type: "rss",
+      url: "https://www.zerotackle.com/news/feed/",
+      description: "Zero Tackle NRL news and analysis",
+      sport: "nrl",
+    },
+    {
+      name: "The Roar NRL",
+      type: "rss",
+      url: "https://www.theroar.com.au/nrl/feed/",
+      description: "The Roar NRL analysis and opinions",
+      sport: "nrl",
+    },
+    {
+      name: "NRL.com Draw",
+      type: "url",
+      url: "https://www.nrl.com/draw/nrl-premiership/2026/",
+      description: "NRL 2026 draw and fixtures",
+      sport: "nrl",
+    },
+    {
+      name: "NRL Ladder",
+      type: "url",
+      url: "https://www.nrl.com/ladder/nrl-premiership/2026/",
+      description: "Current NRL season ladder",
+      sport: "nrl",
     },
   ];
 
   const insert = db.prepare(`
-    INSERT OR IGNORE INTO data_sources (name, type, url, description)
-    VALUES ($name, $type, $url, $description)
+    INSERT OR IGNORE INTO data_sources (name, type, url, description, sport)
+    VALUES ($name, $type, $url, $description, $sport)
   `);
 
   for (const source of sources) {
@@ -159,6 +221,7 @@ function seedDefaultSources() {
       $type: source.type,
       $url: source.url,
       $description: source.description,
+      $sport: source.sport,
     });
   }
 }

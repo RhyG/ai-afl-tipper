@@ -1,5 +1,6 @@
 import Parser from "rss-parser";
 import { getCachedRound } from "./squiggle";
+import { getCachedNRLRound } from "./nrl";
 import { emit } from "./log-stream";
 import { getDb } from "../db/client";
 
