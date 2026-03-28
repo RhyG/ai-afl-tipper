@@ -62,11 +62,12 @@ export const RoundView: FC<RoundViewProps> = ({
             hx-post={`/tips/generate/bulk?round=${round}&year=${year}&sport=${sport}`}
             hx-target="#fixture-grid"
             hx-swap="innerHTML"
-            hx-indicator="#bulk-spinner"
-            class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
+            class="relative flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
           >
-            <span>Generate All Tips</span>
-            <span id="bulk-spinner" class="htmx-indicator text-xs">⏳</span>
+            <span class="hide-on-load">Generate All Tips</span>
+            <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" d="M12 2a10 10 0 0 1 10 10" />
+            </svg>
           </button>
         )}
         {(isCurrentRound || !isUpcoming) && (
@@ -74,22 +75,24 @@ export const RoundView: FC<RoundViewProps> = ({
             hx-post={`/results/sync?round=${round}&year=${year}&sport=${sport}`}
             hx-target="#fixture-grid"
             hx-swap="innerHTML"
-            hx-indicator="#results-spinner"
-            class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            class="relative flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
-            Update Results
-            <span id="results-spinner" class="htmx-indicator text-xs">⏳</span>
+            <span class="hide-on-load">Update Results</span>
+            <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path stroke-linecap="round" d="M12 2a10 10 0 0 1 10 10" />
+            </svg>
           </button>
         )}
         <button
           hx-post={`/fixtures/sync?round=${round}&year=${year}&sport=${sport}`}
           hx-target="#fixture-grid"
           hx-swap="innerHTML"
-          hx-indicator="#sync-spinner"
-          class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          class="relative flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
-          Refresh Fixtures
-          <span id="sync-spinner" class="htmx-indicator text-xs">⏳</span>
+          <span class="hide-on-load">Refresh Fixtures</span>
+          <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path stroke-linecap="round" d="M12 2a10 10 0 0 1 10 10" />
+          </svg>
         </button>
       </div>
 

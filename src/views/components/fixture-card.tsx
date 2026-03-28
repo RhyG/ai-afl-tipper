@@ -231,10 +231,10 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
                 hx-post={`/tips/generate/${fixture.id}`}
                 hx-target={`#fixture-${fixture.id}`}
                 hx-swap="outerHTML"
-                class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-500 px-3 py-2 rounded-lg transition-colors flex items-center gap-1"
+                class="relative text-xs bg-gray-800 hover:bg-gray-700 text-gray-500 px-3 py-2 rounded-lg transition-colors flex items-center justify-center"
               >
-                <span class="label-on-load">Re-tip</span>
-                <svg class="htmx-indicator spin-on-load w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <span class="hide-on-load">Re-tip</span>
+                <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <path stroke-linecap="round" d="M12 2a10 10 0 0 1 10 10" />
                 </svg>
               </button>
@@ -248,11 +248,12 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
               hx-post={`/tips/generate/${fixture.id}`}
               hx-target={`#fixture-${fixture.id}`}
               hx-swap="outerHTML"
-              hx-indicator={`#spinner-${fixture.id}`}
-              class="w-full bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+              class="relative w-full bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center"
             >
-              <span>Generate Tip</span>
-              <span id={`spinner-${fixture.id}`} class="htmx-indicator text-xs">⏳</span>
+              <span class="hide-on-load">Generate Tip</span>
+              <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path stroke-linecap="round" d="M12 2a10 10 0 0 1 10 10" />
+              </svg>
             </button>
           ) : (
             <div class="text-center text-xs text-gray-700">No tip generated</div>
@@ -260,9 +261,6 @@ export const FixtureCard: FC<FixtureCardProps> = ({ fixture, tip }) => {
         </div>
       )}
 
-      <div id={`fixture-${fixture.id}-spinner`} class="htmx-indicator text-center text-xs text-blue-400">
-        Generating tip...
-      </div>
     </div>
   );
 };
