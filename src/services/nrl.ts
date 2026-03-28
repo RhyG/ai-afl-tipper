@@ -1,5 +1,5 @@
 // NRL fixture service using TheSportsDB free API
-// League: NRL Premiership — ID 4180
+// League: Australian National Rugby League — ID 4416
 // To verify: https://www.thesportsdb.com/api/v1/json/3/all_leagues.php
 // Update NRL_LEAGUE_ID below if needed.
 
@@ -36,8 +36,20 @@ function mapEvent(event: TsdbEvent): GameRecord {
 
   const status = (event.strStatus ?? "NS").toUpperCase();
   const isComplete =
-    status === "FT" || status === "AET" || status === "FT_PEN" || status === "FINISHED";
-  const isLive = !isComplete && status !== "NS" && status !== "" && status !== "PPD";
+    status === "FT" ||
+    status === "AET" ||
+    status === "FT_PEN" ||
+    status === "FINISHED" ||
+    status === "MATCH FINISHED" ||
+    status === "AFTER EXTRA TIME" ||
+    status === "AFTER PENALTIES";
+  const isLive =
+    !isComplete &&
+    status !== "NS" &&
+    status !== "NOT STARTED" &&
+    status !== "" &&
+    status !== "PPD" &&
+    status !== "POSTPONED";
 
   const complete = isComplete ? 100 : isLive ? 50 : 0;
 
@@ -101,18 +113,26 @@ export async function detectCurrentNRLRound(): Promise<{ round: number; year: nu
 async function _doDetect(): Promise<{ round: number; year: number }> {
   const year = new Date().getFullYear();
 
-  // Try "next events" endpoint first — fastest when in-season
+  // Use season data to find current round — more reliable than team-based next-events endpoint
   try {
-    const data = await tsdFetch(`eventsnext.php?id=${NRL_LEAGUE_ID}`);
-    if (data.events && data.events.length > 0) {
-      const ev = data.events[0];
-      const round = parseInt(ev.intRound ?? "1", 10);
-      _currentRound = { round, year };
-      console.log(`[nrl] Round detected via next events: ${round}`);
+    const allGames = await fetchAllNRLGamesForYear(year);
+    if (allGames.length > 0) {
+      // Earliest round that still has incomplete games
+      const incomplete = allGames.filter((g) => g.complete < 100);
+      if (incomplete.length > 0) {
+        const round = Math.min(...incomplete.map((g) => g.round));
+        _currentRound = { round, year };
+        console.log(`[nrl] Round detected via season data: ${round}`);
+        return _currentRound;
+      }
+      // All games complete — return the final round
+      const lastRound = Math.max(...allGames.map((g) => g.round));
+      _currentRound = { round: lastRound, year };
+      console.log(`[nrl] Season complete, using last round: ${lastRound}`);
       return _currentRound;
     }
-  } catch {
-    // Fall through to scan approach
+  } catch (err) {
+    console.warn(`[nrl] Season data unavailable, falling back to scan: ${err}`);
   }
 
   // Fallback: scan rounds from a week-based guess
@@ -121,12 +141,12 @@ async function _doDetect(): Promise<{ round: number; year: number }> {
   const weekOfYear = Math.floor(
     (now.getTime() - startOfYear.getTime()) / (7 * 24 * 60 * 60 * 1000)
   );
-  // NRL season typically starts around week 8 (late Feb / early Mar)
-  const guessRound = Math.max(1, Math.min(27, weekOfYear - 7));
+  // NRL season starts ~week 9 (early Mar); subtract 8 to estimate round number
+  const guessRound = Math.max(1, Math.min(27, weekOfYear - 8));
 
   console.log(`[nrl] Scanning rounds from guess ${guessRound}...`);
 
-  for (let round = guessRound; round <= 27; round++) {
+  for (let round = Math.max(1, guessRound - 1); round <= 27; round++) {
     try {
       const games = await fetchNRLFixtures(round, year);
       if (games.length === 0) continue;
