@@ -233,11 +233,10 @@ export const TipDetail: FC<TipDetailProps> = ({ fixture, tip }) => {
             hx-post={`/tips/generate/${fixture.id}`}
             hx-target={`#fixture-${fixture.id}`}
             hx-swap="outerHTML"
-            hx-indicator={`#retip-spinner-${fixture.id}`}
             class="text-xs bg-gray-800 hover:bg-gray-700 text-gray-400 px-3 py-2 rounded-lg transition-colors flex items-center gap-1"
           >
             <span class="label-on-load">Re-tip</span>
-            <svg id={`retip-spinner-${fixture.id}`} class="htmx-indicator spin-on-load w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <svg class="htmx-indicator spin-on-load w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <path stroke-linecap="round" d="M12 2a10 10 0 0 1 10 10" />
             </svg>
           </button>
