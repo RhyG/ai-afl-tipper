@@ -90,7 +90,7 @@ async function tsdFetch(endpoint: string): Promise<TsdbResponse> {
   const url = `${TSDB_BASE}/${endpoint}`;
   const res = await fetch(url, {
     headers: { "User-Agent": USER_AGENT },
-    signal: AbortSignal.timeout(10000),
+    signal: AbortSignal.timeout(5000),
   });
   if (!res.ok) throw new Error(`TheSportsDB API error: ${res.status} ${res.statusText}`);
   return res.json() as Promise<TsdbResponse>;
@@ -113,15 +113,11 @@ function _weekGuess(): { round: number; year: number } {
 
 export async function detectCurrentNRLRound(): Promise<{ round: number; year: number }> {
   if (_currentRound) return _currentRound;
+  // Fire detection in the background; never block the caller
   if (!_detectPromise) {
     _detectPromise = _doDetect().finally(() => { _detectPromise = null; });
   }
-  // Cap wait at 4 seconds — fall back to a week-based guess so the page loads fast.
-  // Detection continues in the background and _currentRound will be set for future requests.
-  const fallback = new Promise<{ round: number; year: number }>((resolve) =>
-    setTimeout(() => resolve(_currentRound ?? _weekGuess()), 4000)
-  );
-  return Promise.race([_detectPromise, fallback]);
+  return _weekGuess();
 }
 
 async function _doDetect(): Promise<{ round: number; year: number }> {
