@@ -31,8 +31,11 @@ async function fetchRss(source: DataSource): Promise<string> {
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const raw = await res.text();
-  // Replace & not already part of a valid XML entity or numeric reference
-  const sanitized = raw.replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, "&amp;");
+  // Strip invalid XML characters (control chars except tab \x09, LF \x0A, CR \x0D)
+  // then fix bare & not already part of a valid entity/numeric reference
+  const sanitized = raw
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
+    .replace(/&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[\da-fA-F]+);)/g, "&amp;");
 
   const feed = await rssParser.parseString(sanitized);
   const items = (feed.items ?? []).slice(0, 10);
