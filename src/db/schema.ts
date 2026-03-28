@@ -64,6 +64,23 @@ export function runMigrations() {
     // Column already exists — safe to ignore
   }
 
+  // Idempotent migration: add source validation columns
+  try {
+    db.run("ALTER TABLE data_sources ADD COLUMN last_validation_status TEXT NOT NULL DEFAULT 'unknown'");
+  } catch {
+    // Column already exists
+  }
+  try {
+    db.run("ALTER TABLE data_sources ADD COLUMN last_validated_at TEXT");
+  } catch {
+    // Column already exists
+  }
+  try {
+    db.run("ALTER TABLE data_sources ADD COLUMN last_validation_error TEXT NOT NULL DEFAULT ''");
+  } catch {
+    // Column already exists
+  }
+
   // Disable dead RSS feeds in existing DBs
   db.run(`
     UPDATE data_sources SET enabled = 0

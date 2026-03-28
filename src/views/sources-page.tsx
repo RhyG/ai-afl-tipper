@@ -9,6 +9,9 @@ interface Source {
   url: string;
   description: string;
   enabled: number;
+  last_validation_status?: string;
+  last_validated_at?: string;
+  last_validation_error?: string;
 }
 
 interface SourcesPageProps {

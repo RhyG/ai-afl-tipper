@@ -7,6 +7,9 @@ interface Source {
   url: string;
   description: string;
   enabled: number;
+  last_validation_status?: string;
+  last_validated_at?: string;
+  last_validation_error?: string;
 }
 
 const TYPE_COLORS: Record<string, string> = {
@@ -16,16 +19,36 @@ const TYPE_COLORS: Record<string, string> = {
   "squiggle-tips": "bg-green-900/50 text-green-300 border-green-700/50",
 };
 
+const VALIDATION_DOT: Record<string, { class: string; title: string }> = {
+  ok: { class: "bg-green-500", title: "Validated OK" },
+  error: { class: "bg-red-500", title: "Validation failed" },
+  unknown: { class: "bg-gray-600", title: "Not yet validated" },
+};
+
 export const SourceRow: FC<{ source: Source }> = ({ source }) => {
   const typeClass = TYPE_COLORS[source.type] ?? "bg-gray-800 text-gray-400 border-gray-700";
+  const status = source.last_validation_status ?? "unknown";
+  const dot = VALIDATION_DOT[status] ?? VALIDATION_DOT.unknown;
+  const dotTitle =
+    status === "error" && source.last_validation_error
+      ? `Error: ${source.last_validation_error}`
+      : dot.title;
 
   return (
     <tr id={`source-${source.id}`} class="border-t border-gray-800 hover:bg-gray-800/50 transition-colors">
       <td class="px-4 py-3">
-        <div class="font-medium text-white text-sm">{source.name}</div>
-        {source.description && (
-          <div class="text-xs text-gray-500 mt-0.5">{source.description}</div>
-        )}
+        <div class="flex items-center gap-2">
+          <span
+            class={`shrink-0 w-2 h-2 rounded-full ${dot.class}`}
+            title={dotTitle}
+          />
+          <div>
+            <div class="font-medium text-white text-sm">{source.name}</div>
+            {source.description && (
+              <div class="text-xs text-gray-500 mt-0.5">{source.description}</div>
+            )}
+          </div>
+        </div>
       </td>
       <td class="px-4 py-3">
         <span class={`text-xs font-medium px-2 py-0.5 rounded border ${typeClass}`}>

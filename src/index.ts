@@ -5,6 +5,7 @@ import { runMigrations } from "./db/schema";
 import { detectCurrentRound } from "./services/squiggle";
 import { getFixturesForRound } from "./services/tipper";
 import { dashboardRouter, syncFixtures } from "./routes/dashboard.tsx"; // syncFixtures used in startup
+import { validateAllSources } from "./services/data-fetcher";
 import { fixturesRouter } from "./routes/fixtures.tsx";
 import { tipsRouter } from "./routes/tips.tsx";
 import { resultsRouter } from "./routes/results.tsx";
@@ -45,6 +46,13 @@ console.log("🏈 AFL AI Tipper starting up...");
       console.log(`✅ Synced ${synced.length} fixtures`);
     } else {
       console.log(`✅ ${fixtures.length} fixtures cached`);
+    }
+    console.log("🔍 Validating data sources...");
+    const { ok, errors } = await validateAllSources();
+    if (errors > 0) {
+      console.warn(`⚠️  Source validation: ${ok} ok, ${errors} failed — check the Sources page`);
+    } else {
+      console.log(`✅ Source validation: all ${ok} sources ok`);
     }
   } catch (err) {
     console.error("❌ Startup task failed:", err);

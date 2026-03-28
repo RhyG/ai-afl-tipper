@@ -1,6 +1,7 @@
 import Parser from "rss-parser";
 import { getCachedRound } from "./squiggle";
 import { emit } from "./log-stream";
+import { getDb } from "../db/client";
 
 const rssParser = new Parser({ timeout: 10000 });
 
@@ -14,6 +15,9 @@ export interface DataSource {
   url: string;
   description: string;
   enabled: number;
+  last_validation_status?: string;
+  last_validated_at?: string;
+  last_validation_error?: string;
 }
 
 export interface FetchedSource {
@@ -119,6 +123,55 @@ async function fetchSquiggleTipsSource(source: DataSource): Promise<string> {
   return Array.from(byGame.entries())
     .map(([game, lines]) => `${game}:\n${lines.join("\n")}`)
     .join("\n\n");
+}
+
+export async function validateAllSources(): Promise<{ ok: number; errors: number }> {
+  const db = getDb();
+  const sources = db.query("SELECT * FROM data_sources WHERE enabled = 1").all() as DataSource[];
+
+  const results = await Promise.allSettled(
+    sources.map(async (source) => {
+      switch (source.type) {
+        case "rss":
+          return await fetchRss(source);
+        case "url":
+          return await fetchUrl(source);
+        case "api":
+          return await fetchApi(source);
+        case "squiggle-tips":
+          return await fetchSquiggleTipsSource(source);
+        default:
+          throw new Error(`Unknown source type: ${source.type}`);
+      }
+    })
+  );
+
+  const now = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  let ok = 0;
+  let errors = 0;
+
+  for (let i = 0; i < results.length; i++) {
+    const source = sources[i];
+    const result = results[i];
+    if (result.status === "fulfilled") {
+      ok++;
+      db.run(
+        "UPDATE data_sources SET last_validation_status = 'ok', last_validated_at = ?, last_validation_error = '' WHERE id = ?",
+        [now, source.id]
+      );
+      console.log(`  ✓ ${source.name}`);
+    } else {
+      errors++;
+      const error = result.reason instanceof Error ? result.reason.message : String(result.reason);
+      db.run(
+        "UPDATE data_sources SET last_validation_status = 'error', last_validated_at = ?, last_validation_error = ? WHERE id = ?",
+        [now, error, source.id]
+      );
+      console.error(`  ✗ ${source.name}: ${error}`);
+    }
+  }
+
+  return { ok, errors };
 }
 
 export async function fetchAllSources(sources: DataSource[]): Promise<FetchedSource[]> {
