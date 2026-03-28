@@ -21,12 +21,18 @@ let _detectPromise: Promise<{ round: number; year: number }> | null = null;
 
 async function squiggleFetch(query: string): Promise<unknown> {
   const url = `${BASE_URL}?${query}`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
-    signal: AbortSignal.timeout(8000),
+  // Promise.race guarantees the timeout fires in the JS event loop;
+  // AbortSignal.timeout alone can hang 100+ seconds on unreachable hosts in some Bun versions.
+  const request = fetch(url, { headers: { "User-Agent": USER_AGENT } }).then(async (res) => {
+    if (!res.ok) throw new Error(`Squiggle API error: ${res.status} ${res.statusText}`);
+    return res.json();
   });
-  if (!res.ok) throw new Error(`Squiggle API error: ${res.status} ${res.statusText}`);
-  return res.json();
+  return Promise.race([
+    request,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Squiggle request timed out")), 8000)
+    ),
+  ]);
 }
 
 export async function detectCurrentRound(): Promise<{ round: number; year: number }> {

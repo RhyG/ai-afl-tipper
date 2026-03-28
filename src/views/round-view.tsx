@@ -70,18 +70,22 @@ export const RoundView: FC<RoundViewProps> = ({
             hx-post={`/results/sync?round=${round}&year=${year}&sport=${sport}`}
             hx-target="#fixture-grid"
             hx-swap="innerHTML"
-            class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            hx-indicator="#results-spinner"
+            class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           >
             Update Results
+            <span id="results-spinner" class="htmx-indicator text-xs">⏳</span>
           </button>
         )}
         <button
           hx-post={`/fixtures/sync?round=${round}&year=${year}&sport=${sport}`}
           hx-target="#fixture-grid"
           hx-swap="innerHTML"
-          class="bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          hx-indicator="#sync-spinner"
+          class="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
         >
           Refresh Fixtures
+          <span id="sync-spinner" class="htmx-indicator text-xs">⏳</span>
         </button>
       </div>
 

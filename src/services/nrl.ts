@@ -88,12 +88,16 @@ function mapEvent(event: TsdbEvent): GameRecord {
 
 async function tsdFetch(endpoint: string): Promise<TsdbResponse> {
   const url = `${TSDB_BASE}/${endpoint}`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT },
-    signal: AbortSignal.timeout(5000),
+  const request = fetch(url, { headers: { "User-Agent": USER_AGENT } }).then(async (res) => {
+    if (!res.ok) throw new Error(`TheSportsDB API error: ${res.status} ${res.statusText}`);
+    return res.json() as TsdbResponse;
   });
-  if (!res.ok) throw new Error(`TheSportsDB API error: ${res.status} ${res.statusText}`);
-  return res.json() as Promise<TsdbResponse>;
+  return Promise.race([
+    request,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("TheSportsDB request timed out")), 5000)
+    ),
+  ]);
 }
 
 // ── Round detection ───────────────────────────────────────────────────────────

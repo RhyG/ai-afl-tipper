@@ -34,10 +34,9 @@ app.route("/odds", oddsRouter);
 const port = config.port;
 console.log("🏈🏉 AI Tipper starting up...");
 
-// Kick off round detection for both sports (non-blocking)
+// ── AFL startup (blocking — needed before server is ready) ───────────────────
 (async () => {
   try {
-    // ── AFL startup ──────────────────────────────────────────────────────────
     const aflRound = await detectCurrentRound();
     console.log(`📅 AFL current round: Round ${aflRound.round}, ${aflRound.year}`);
 
@@ -51,25 +50,7 @@ console.log("🏈🏉 AI Tipper starting up...");
       console.log(`✅ AFL: ${aflFixtures.length} fixtures cached`);
     }
 
-    // ── NRL startup ──────────────────────────────────────────────────────────
-    try {
-      const nrlRound = await detectCurrentNRLRound();
-      console.log(`📅 NRL current round: Round ${nrlRound.round}, ${nrlRound.year}`);
-
-      const nrlFixtures = getFixturesForRound(nrlRound.round, nrlRound.year, "nrl");
-      if (nrlFixtures.length === 0) {
-        console.log("📥 NRL: no fixtures cached — syncing...");
-        await syncFixtures(nrlRound.round, nrlRound.year, "nrl");
-        const synced = getFixturesForRound(nrlRound.round, nrlRound.year, "nrl");
-        console.log(`✅ NRL: synced ${synced.length} fixtures`);
-      } else {
-        console.log(`✅ NRL: ${nrlFixtures.length} fixtures cached`);
-      }
-    } catch (err) {
-      console.warn(`⚠️  NRL startup skipped: ${err}`);
-    }
-
-    // ── Source validation (both sports) ─────────────────────────────────────
+    // ── Source validation ───────────────────────────────────────────────────
     console.log("🔍 Validating data sources...");
     setValidating(true);
     try {
@@ -83,8 +64,28 @@ console.log("🏈🏉 AI Tipper starting up...");
       setValidating(false);
     }
   } catch (err) {
-    console.error("❌ Startup task failed:", err);
+    console.error("❌ AFL startup task failed:", err);
     setValidating(false);
+  }
+})();
+
+// ── NRL startup (fire-and-forget — does not block AFL or server readiness) ────
+(async () => {
+  try {
+    const nrlRound = await detectCurrentNRLRound();
+    console.log(`📅 NRL current round: Round ${nrlRound.round}, ${nrlRound.year}`);
+
+    const nrlFixtures = getFixturesForRound(nrlRound.round, nrlRound.year, "nrl");
+    if (nrlFixtures.length === 0) {
+      console.log("📥 NRL: no fixtures cached — syncing...");
+      await syncFixtures(nrlRound.round, nrlRound.year, "nrl");
+      const synced = getFixturesForRound(nrlRound.round, nrlRound.year, "nrl");
+      console.log(`✅ NRL: synced ${synced.length} fixtures`);
+    } else {
+      console.log(`✅ NRL: ${nrlFixtures.length} fixtures cached`);
+    }
+  } catch (err) {
+    console.warn(`⚠️  NRL startup skipped: ${err}`);
   }
 })();
 

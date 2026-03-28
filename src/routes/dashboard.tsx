@@ -26,15 +26,6 @@ export function buildTipsMap(fixtures: Fixture[]): Map<number, Tip> {
   return map;
 }
 
-function isStale(fixtures: Fixture[]): boolean {
-  if (fixtures.length === 0) return true;
-  const latest = fixtures.reduce((a, b) =>
-    new Date(a.synced_at) > new Date(b.synced_at) ? a : b
-  );
-  const age = Date.now() - new Date(latest.synced_at).getTime();
-  return age > 60 * 60 * 1000;
-}
-
 export async function syncFixtures(round: number, year: number, sport: SportId = "afl") {
   const db = getDb();
 
@@ -82,16 +73,8 @@ async function detectRound(sport: SportId): Promise<{ round: number; year: numbe
   return sport === "nrl" ? detectCurrentNRLRound() : detectCurrentRound();
 }
 
-async function getRoundData(round: number, year: number, sport: SportId) {
-  let fixtures = getFixturesForRound(round, year, sport);
-  if (isStale(fixtures)) {
-    try {
-      await syncFixtures(round, year, sport);
-      fixtures = getFixturesForRound(round, year, sport);
-    } catch (err) {
-      console.error(`Auto-sync failed for round ${round} (${sport}):`, err);
-    }
-  }
+function getRoundData(round: number, year: number, sport: SportId) {
+  const fixtures = getFixturesForRound(round, year, sport);
   const tips = buildTipsMap(fixtures);
   const lastSyncedAt = fixtures[0]?.synced_at
     ? new Date(fixtures[0].synced_at).toLocaleString("en-AU")
@@ -125,7 +108,7 @@ app.get("/", async (c) => {
   const sport = parseSport(c.req.query("sport"));
   const sportConfig = SPORTS[sport];
   const current = await detectRound(sport);
-  const { fixtures, tips, lastSyncedAt } = await getRoundData(current.round, current.year, sport);
+  const { fixtures, tips, lastSyncedAt } = getRoundData(current.round, current.year, sport);
   const maxRound = Math.min(sportConfig.maxRounds, current.round + UPCOMING_ROUNDS);
 
   const aiSettings = getAISettings();
@@ -160,7 +143,7 @@ app.get("/rounds/:year/:round", async (c) => {
     return c.redirect(`/?sport=${sport}`);
   }
 
-  const { fixtures, tips, lastSyncedAt } = await getRoundData(round, year, sport);
+  const { fixtures, tips, lastSyncedAt } = getRoundData(round, year, sport);
   const isHtmx = c.req.header("HX-Request") === "true";
   const roundViewProps = {
     round, year,
