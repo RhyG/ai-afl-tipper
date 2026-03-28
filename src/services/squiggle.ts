@@ -35,13 +35,23 @@ async function squiggleFetch(query: string): Promise<unknown> {
   ]);
 }
 
+function _weekGuess(): { round: number; year: number } {
+  const year = new Date().getFullYear();
+  const now = new Date();
+  const weekOfYear = Math.floor(
+    (now.getTime() - new Date(year, 0, 1).getTime()) / (7 * 24 * 60 * 60 * 1000)
+  );
+  // AFL season starts ~week 10 (mid-March), 1 round per week
+  return { round: Math.max(1, Math.min(24, weekOfYear - 9)), year };
+}
+
 export async function detectCurrentRound(): Promise<{ round: number; year: number }> {
   if (_currentRound) return _currentRound;
-  if (_detectPromise) return _detectPromise;
-  _detectPromise = _doDetect();
-  const result = await _detectPromise;
-  _detectPromise = null;
-  return result;
+  // Fire detection in the background; never block the caller
+  if (!_detectPromise) {
+    _detectPromise = _doDetect().finally(() => { _detectPromise = null; });
+  }
+  return _weekGuess();
 }
 
 async function _doDetect(): Promise<{ round: number; year: number }> {
