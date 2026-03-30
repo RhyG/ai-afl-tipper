@@ -50,6 +50,17 @@ console.log("🏈🏉 AI Tipper starting up...");
       console.log(`✅ AFL: ${aflFixtures.length} fixtures cached`);
     }
 
+    // Preload surrounding rounds (prev + next 2) so initial navigation is instant
+    const aflSurrounding = [-1, 1, 2]
+      .map((o) => aflRound.round + o)
+      .filter((r) => r >= 1 && r <= 24);
+    for (const r of aflSurrounding) {
+      if (getFixturesForRound(r, aflRound.year, "afl").length === 0) {
+        console.log(`📥 AFL: preloading Round ${r}...`);
+        await syncFixtures(r, aflRound.year, "afl");
+      }
+    }
+
     // ── Source validation ───────────────────────────────────────────────────
     console.log("🔍 Validating data sources...");
     setValidating(true);
@@ -83,6 +94,17 @@ console.log("🏈🏉 AI Tipper starting up...");
       console.log(`✅ NRL: synced ${synced.length} fixtures`);
     } else {
       console.log(`✅ NRL: ${nrlFixtures.length} fixtures cached`);
+    }
+
+    // Preload surrounding rounds (prev + next 2)
+    const nrlSurrounding = [-1, 1, 2]
+      .map((o) => nrlRound.round + o)
+      .filter((r) => r >= 1 && r <= 27);
+    for (const r of nrlSurrounding) {
+      if (getFixturesForRound(r, nrlRound.year, "nrl").length === 0) {
+        console.log(`📥 NRL: preloading Round ${r}...`);
+        await syncFixtures(r, nrlRound.year, "nrl");
+      }
     }
   } catch (err) {
     console.warn(`⚠️  NRL startup skipped: ${err}`);

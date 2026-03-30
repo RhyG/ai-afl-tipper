@@ -9,6 +9,7 @@ import { getAISettings } from "../services/runtime-config";
 import { isValidating } from "../services/startup-state";
 import { Dashboard } from "../views/dashboard";
 import { RoundView } from "../views/round-view";
+import { RoundNav } from "../views/components/round-nav";
 import { SPORTS, parseSport, type SportId } from "../sports";
 import type { GameRecord } from "../services/game-record";
 
@@ -120,8 +121,14 @@ app.get("/", async (c) => {
   const sport = parseSport(c.req.query("sport"));
   const sportConfig = SPORTS[sport];
   const current = await detectRound(sport);
-  const { fixtures, tips, lastSyncedAt } = getRoundData(current.round, current.year, sport);
+  let { fixtures, tips, lastSyncedAt } = getRoundData(current.round, current.year, sport);
   const maxRound = getMaxRound(sport, current.round, null, sportConfig.maxRounds);
+
+  // Startup race: if fixtures haven't been cached yet, sync now
+  if (fixtures.length === 0) {
+    await syncFixtures(current.round, current.year, sport);
+    ({ fixtures, tips, lastSyncedAt } = getRoundData(current.round, current.year, sport));
+  }
 
   const aiSettings = getAISettings();
   const page = (
@@ -157,14 +164,44 @@ app.get("/rounds/:year/:round", async (c) => {
 
   const { fixtures, tips, lastSyncedAt } = getRoundData(round, year, sport);
   const isHtmx = c.req.header("HX-Request") === "true";
+
+  // Auto-load: if no fixtures cached, show loading state (HTMX) or sync inline (full page)
+  if (fixtures.length === 0) {
+    if (isHtmx) {
+      const navProps = { round, year, currentRound: current.round, currentYear: current.year, maxRound, sport };
+      const fragment = (
+        <div>
+          <div class="mb-6">
+            <RoundNav {...navProps} />
+          </div>
+          <div
+            hx-post={`/rounds/${year}/${round}/load?sport=${sport}`}
+            hx-target="#round-view"
+            hx-swap="innerHTML"
+            hx-trigger="load"
+            class="text-center py-16"
+          >
+            <div style="width:2rem;height:2rem;border:3px solid #3b82f6;border-top-color:transparent;border-radius:9999px;animation:spin 0.8s linear infinite;margin:0 auto" />
+            <div class="text-lg font-medium text-gray-400 mt-4">Loading fixtures…</div>
+            <div class="text-sm mt-1 text-gray-600">Fetching from {sportConfig.label} data source</div>
+          </div>
+        </div>
+      );
+      return c.html(renderToString(fragment as any));
+    }
+    // Full-page: sync inline before rendering
+    await syncFixtures(round, year, sport);
+  }
+
+  const { fixtures: f2, tips: t2, lastSyncedAt: s2 } = getRoundData(round, year, sport);
   const roundViewProps = {
     round, year,
     currentRound: current.round,
     currentYear: current.year,
     maxRound,
-    fixtures,
-    tips,
-    lastSyncedAt,
+    fixtures: f2,
+    tips: t2,
+    lastSyncedAt: s2,
     sport,
   };
 
@@ -177,6 +214,36 @@ app.get("/rounds/:year/:round", async (c) => {
     <Dashboard {...roundViewProps} aiProvider={aiSettings.provider} aiModel={aiSettings.model} />
   );
   return c.html("<!DOCTYPE html>" + renderToString(page as any));
+});
+
+// Auto-load endpoint: syncs fixtures then returns full RoundView for #round-view swap
+app.post("/rounds/:year/:round/load", async (c) => {
+  const round = parseInt(c.req.param("round"), 10);
+  const year = parseInt(c.req.param("year"), 10);
+  const sport = parseSport(c.req.query("sport"));
+  const sportConfig = SPORTS[sport];
+
+  if (isNaN(round) || isNaN(year) || round < 1 || round > sportConfig.maxRounds) {
+    return c.text("Invalid round", 400);
+  }
+
+  await syncFixtures(round, year, sport);
+
+  const current = await detectRound(sport);
+  const maxRound = getMaxRound(sport, current.round, round, sportConfig.maxRounds);
+  const { fixtures, tips, lastSyncedAt } = getRoundData(round, year, sport);
+
+  return c.html(renderToString((<RoundView
+    round={round}
+    year={year}
+    currentRound={current.round}
+    currentYear={current.year}
+    maxRound={maxRound}
+    fixtures={fixtures}
+    tips={tips}
+    lastSyncedAt={lastSyncedAt}
+    sport={sport}
+  />) as any));
 });
 
 export { app as dashboardRouter };
