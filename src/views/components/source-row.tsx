@@ -28,7 +28,7 @@ const STATUS_BADGE: Record<string, { label: string; class: string }> = {
 export const SourceRow: FC<{ source: Source }> = ({ source }) => {
   const typeClass = TYPE_COLORS[source.type] ?? "bg-gray-800 text-gray-400 border-gray-700";
   const status = source.last_validation_status ?? "unknown";
-  const badge = STATUS_BADGE[status] ?? STATUS_BADGE.unknown;
+  const badge = STATUS_BADGE[status] ?? STATUS_BADGE["unknown"]!;
   const badgeTitle =
     status === "error" && source.last_validation_error
       ? source.last_validation_error

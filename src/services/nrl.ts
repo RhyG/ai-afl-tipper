@@ -90,7 +90,7 @@ async function tsdFetch(endpoint: string): Promise<TsdbResponse> {
   const url = `${TSDB_BASE}/${endpoint}`;
   const request = fetch(url, { headers: { "User-Agent": USER_AGENT } }).then(async (res) => {
     if (!res.ok) throw new Error(`TheSportsDB API error: ${res.status} ${res.statusText}`);
-    return res.json() as TsdbResponse;
+    return (await res.json()) as TsdbResponse;
   });
   return Promise.race([
     request,

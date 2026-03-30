@@ -154,6 +154,7 @@ export async function validateAllSources(): Promise<{ ok: number; errors: number
   for (let i = 0; i < results.length; i++) {
     const source = sources[i];
     const result = results[i];
+    if (!result || !source) continue;
     if (result.status === "fulfilled") {
       ok++;
       db.run(
@@ -206,6 +207,7 @@ export async function fetchAllSources(sources: DataSource[]): Promise<FetchedSou
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
     const source = enabled[i];
+    if (!result || !source) continue;
     if (result.status === "fulfilled") {
       const chars = result.value.content.length;
       emit({ type: "fetch", text: `  ✓ ${source.name} (${chars} chars)\n` });

@@ -62,7 +62,7 @@ async function _doDetect(): Promise<{ round: number; year: number }> {
   try {
     const data = (await squiggleFetch("q=games;upcoming=1")) as { games: SquiggleGame[] };
     if (data.games && data.games.length > 0) {
-      const game = data.games[0];
+      const game = data.games[0]!;
       _currentRound = { round: game.round, year: game.year };
       console.log(`Round detected via upcoming: ${game.round}`);
       return _currentRound;
