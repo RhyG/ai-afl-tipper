@@ -24,29 +24,31 @@ export const OddsDisplay: FC<OddsDisplayProps> = ({
   return (
     <details
       id={`odds-${fixtureId}`}
-      style="border-radius:10px;border:1px solid rgba(255,255,255,0.07);background:rgba(255,255,255,0.03);padding:8px 12px"
+      class="rounded-lg border border-gray-700/40 bg-gray-800/30 px-3 py-2 group"
     >
       <summary class="list-none cursor-pointer select-none">
+        {/* Summary row: avg odds + expand hint */}
         <div class="flex items-center text-sm">
-          <div class="flex-1 text-left" style={homeFavored ? "color:white" : "color:rgba(71,85,105,0.8)"}>
-            <span class="font-black tabular-nums">${avgHomeOdds?.toFixed(2)}</span>
-            <span class="text-xs ml-1" style="color:rgba(71,85,105,0.7)">{homeImpliedPct}%</span>
+          <div class={`flex-1 text-left ${homeFavored ? "text-white" : "text-gray-500"}`}>
+            <span class="font-bold tabular-nums">${avgHomeOdds?.toFixed(2)}</span>
+            <span class="text-xs ml-1 text-gray-500">{homeImpliedPct}%</span>
           </div>
-          <div class="text-xs px-2" style="color:rgba(71,85,105,0.6)">avg</div>
-          <div class="flex-1 text-right" style={!homeFavored ? "color:white" : "color:rgba(71,85,105,0.8)"}>
-            <span class="text-xs mr-1" style="color:rgba(71,85,105,0.7)">{awayImpliedPct}%</span>
-            <span class="font-black tabular-nums">${avgAwayOdds?.toFixed(2)}</span>
+          <div class="text-gray-700 text-xs px-2">avg</div>
+          <div class={`flex-1 text-right ${!homeFavored ? "text-white" : "text-gray-500"}`}>
+            <span class="text-xs mr-1 text-gray-500">{awayImpliedPct}%</span>
+            <span class="font-bold tabular-nums">${avgAwayOdds?.toFixed(2)}</span>
           </div>
         </div>
-        <div class="text-center mt-1" style="font-size:10px;color:rgba(71,85,105,0.6)">
-          ▸ {bookmakers.length} bookmaker{bookmakers.length === 1 ? "" : "s"}
+        <div class="text-xs text-gray-600 text-center mt-1">
+          <span class="text-gray-700">▸</span> {bookmakers.length} bookmaker{bookmakers.length === 1 ? "" : "s"}
         </div>
       </summary>
 
-      <div class="mt-2 pt-2" style="border-top:1px solid rgba(255,255,255,0.06)">
+      {/* Per-bookmaker breakdown */}
+      <div class="mt-2 pt-2 border-t border-gray-700/40">
         <table class="w-full text-xs">
           <thead>
-            <tr style="color:rgba(71,85,105,0.7)">
+            <tr class="text-gray-600">
               <th class="text-left font-normal pb-1">Bookmaker</th>
               <th class="text-right font-normal pb-1 tabular-nums">{homeTeam.split(" ").pop()}</th>
               <th class="text-right font-normal pb-1 tabular-nums">{awayTeam.split(" ").pop()}</th>
@@ -56,12 +58,12 @@ export const OddsDisplay: FC<OddsDisplayProps> = ({
             {bookmakers.map((b) => {
               const homeIsFav = b.homeOdds <= b.awayOdds;
               return (
-                <tr style="border-top:1px solid rgba(255,255,255,0.04)">
-                  <td class="py-0.5" style="color:rgba(100,116,139,0.7)">{b.name}</td>
-                  <td class="py-0.5 text-right tabular-nums" style={homeIsFav ? "color:white" : "color:rgba(71,85,105,0.7)"}>
+                <tr class="border-t border-gray-800/60">
+                  <td class="py-0.5 text-gray-500">{b.name}</td>
+                  <td class={`py-0.5 text-right tabular-nums ${homeIsFav ? "text-white" : "text-gray-500"}`}>
                     ${b.homeOdds.toFixed(2)}
                   </td>
-                  <td class="py-0.5 text-right tabular-nums" style={!homeIsFav ? "color:white" : "color:rgba(71,85,105,0.7)"}>
+                  <td class={`py-0.5 text-right tabular-nums ${!homeIsFav ? "text-white" : "text-gray-500"}`}>
                     ${b.awayOdds.toFixed(2)}
                   </td>
                 </tr>
