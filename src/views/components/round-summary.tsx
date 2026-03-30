@@ -17,23 +17,29 @@ export const RoundSummary: FC<RoundSummaryProps> = ({ fixtures, tips }) => {
   if (tipped.length === 0) return null;
 
   const pct = Math.round((correct.length / tipped.length) * 100);
+  const barGrad = pct >= 60
+    ? "linear-gradient(90deg,#10b981,#34d399)"
+    : "linear-gradient(90deg,#f97316,#f43f5e)";
 
   return (
-    <div class="bg-gray-900 border border-gray-700 rounded-xl p-4 flex items-center gap-6">
-      <div class="text-center">
-        <div class="text-3xl font-bold text-white">{correct.length}/{tipped.length}</div>
-        <div class="text-xs text-gray-500 mt-0.5">Correct</div>
+    <div class="accuracy-bar p-4 flex items-center gap-6">
+      <div class="text-center shrink-0">
+        <div class="font-black text-white tabular-nums" style="font-size:32px;line-height:1;letter-spacing:-0.02em">
+          {correct.length}<span style="color:rgba(100,116,139,0.5);font-size:20px">/{tipped.length}</span>
+        </div>
+        <div class="uppercase font-semibold mt-1" style="font-size:10px;letter-spacing:0.12em;color:rgba(100,116,139,0.7)">
+          Correct
+        </div>
       </div>
       <div class="flex-1">
-        <div class="h-3 bg-gray-800 rounded-full overflow-hidden">
-          <div
-            class={`h-full rounded-full transition-all ${pct >= 60 ? "bg-green-500" : "bg-orange-500"}`}
-            style={`width: ${pct}%`}
-          />
+        <div class="conf-bar-track" style="height:8px">
+          <div style={`width:${pct}%;height:100%;border-radius:999px;background:${barGrad};transition:width 0.5s ease`} />
         </div>
-        <div class="text-sm text-gray-400 mt-1">{pct}% accuracy this round</div>
+        <div class="text-sm mt-1.5 font-semibold" style="color:rgba(148,163,184,0.8)">
+          {pct}% accuracy this round
+        </div>
       </div>
-      <div class="text-right text-xs text-gray-500">
+      <div class="text-right shrink-0 text-xs" style="color:rgba(71,85,105,0.9)">
         {fixtures.length - completed.length} game{fixtures.length - completed.length !== 1 ? "s" : ""} remaining
       </div>
     </div>

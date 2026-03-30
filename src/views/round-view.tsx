@@ -51,7 +51,7 @@ export const RoundView: FC<RoundViewProps> = ({
           sport={sport}
         />
         {lastSyncedAt && (
-          <p class="text-xs text-gray-600 text-center mt-1">Synced: {lastSyncedAt}</p>
+          <p class="text-xs text-center mt-1" style="color:rgba(71,85,105,0.7)">Synced: {lastSyncedAt}</p>
         )}
       </div>
 
@@ -62,7 +62,7 @@ export const RoundView: FC<RoundViewProps> = ({
             hx-post={`/tips/generate/bulk?round=${round}&year=${year}&sport=${sport}`}
             hx-target="#fixture-grid"
             hx-swap="innerHTML"
-            class="relative flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-4 py-2 rounded-lg transition-colors"
+            class="btn-primary relative flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-xl"
           >
             <span class="hide-on-load">Generate All Tips</span>
             <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -75,7 +75,7 @@ export const RoundView: FC<RoundViewProps> = ({
             hx-post={`/results/sync?round=${round}&year=${year}&sport=${sport}`}
             hx-target="#fixture-grid"
             hx-swap="innerHTML"
-            class="relative flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            class="btn-secondary relative flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-xl"
           >
             <span class="hide-on-load">Update Results</span>
             <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -87,7 +87,7 @@ export const RoundView: FC<RoundViewProps> = ({
           hx-post={`/fixtures/sync?round=${round}&year=${year}&sport=${sport}`}
           hx-target="#fixture-grid"
           hx-swap="innerHTML"
-          class="relative flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 text-gray-300 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          class="btn-secondary relative flex items-center justify-center gap-2 text-sm px-4 py-2 rounded-xl"
         >
           <span class="hide-on-load">Refresh Fixtures</span>
           <svg class="htmx-indicator spin-on-load absolute inset-0 m-auto w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -105,7 +105,7 @@ export const RoundView: FC<RoundViewProps> = ({
 
       {/* Upcoming badge */}
       {isUpcoming && !hasCompleted && fixtures.length > 0 && (
-        <div class="mb-4 bg-yellow-900/20 border border-yellow-700/30 rounded-lg px-4 py-2 text-sm text-yellow-400">
+        <div class="mb-4 rounded-xl px-4 py-3 text-sm" style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.2);color:#fbbf24">
           These games haven't been played yet — generate tips now to lock in your picks before they start.
         </div>
       )}
@@ -123,10 +123,10 @@ export const RoundView: FC<RoundViewProps> = ({
       {/* Fixture grid */}
       <div id="fixture-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {fixtures.length === 0 ? (
-          <div class="col-span-2 text-center py-16 text-gray-600">
-            <div class="text-4xl mb-3">{sportConfig.emoji}</div>
-            <div class="text-lg font-medium">No fixtures found</div>
-            <div class="text-sm mt-1">Click "Refresh Fixtures" to load from the {sportConfig.label} data source</div>
+          <div class="col-span-2 text-center py-16" style="color:rgba(71,85,105,0.7)">
+            <div class="text-5xl mb-4">{sportConfig.emoji}</div>
+            <div class="font-black text-white" style="font-size:18px;letter-spacing:-0.01em">No fixtures found</div>
+            <div class="text-sm mt-2" style="color:rgba(71,85,105,0.8)">Click "Refresh Fixtures" to load from the {sportConfig.label} data source</div>
           </div>
         ) : (
           fixtures.map((f) => <FixtureCard fixture={f} tip={tips.get(f.id) ?? null} />)

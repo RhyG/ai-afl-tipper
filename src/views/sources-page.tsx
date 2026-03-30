@@ -39,6 +39,8 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
           { value: "url", label: "URL" },
         ];
 
+  const inputStyle = "width:100%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);color:white;border-radius:10px;padding:8px 12px;font-size:14px;outline:none";
+
   return (
     <Layout
       title={`Data Sources — ${sportConfig.label} AI Tipper`}
@@ -49,24 +51,21 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
     >
       <div class="flex items-center justify-between mb-6">
         <div>
-          <h1 class="text-2xl font-bold text-white">
+          <h1 class="font-black text-white" style="font-size:clamp(20px,3vw,28px);letter-spacing:-0.02em">
             {sportConfig.emoji} {sportConfig.label} Data Sources
           </h1>
-          <p class="text-sm text-gray-500 mt-1">{sources.filter((s) => s.enabled).length} active</p>
+          <p class="text-sm mt-1" style="color:rgba(71,85,105,0.9)">{sources.filter((s) => s.enabled).length} active</p>
         </div>
       </div>
 
       {/* Table */}
-      <div class="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden mb-8">
+      <div class="rounded-2xl overflow-hidden mb-8" style="background:linear-gradient(160deg,rgba(17,27,51,0.9) 0%,rgba(4,13,26,1) 100%);border:1px solid rgba(255,255,255,0.07)">
         <table class="w-full text-sm">
           <thead>
-            <tr class="text-left text-xs text-gray-500 uppercase tracking-wider bg-gray-800/50">
-              <th class="px-4 py-3">Name</th>
-              <th class="px-4 py-3">Type</th>
-              <th class="px-4 py-3">Status</th>
-              <th class="px-4 py-3">URL</th>
-              <th class="px-4 py-3">Enabled</th>
-              <th class="px-4 py-3"></th>
+            <tr class="text-left" style="background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.06)">
+              {["Name", "Type", "Status", "URL", "Enabled", ""].map((h) => (
+                <th class="px-4 py-3 uppercase font-bold" style="font-size:10px;letter-spacing:0.1em;color:rgba(71,85,105,0.8)">{h}</th>
+              ))}
             </tr>
           </thead>
           <tbody
@@ -83,8 +82,8 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
       </div>
 
       {/* Add source form */}
-      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
-        <h2 class="text-base font-semibold text-white mb-4">Add New {sportConfig.label} Source</h2>
+      <div class="rounded-2xl p-6" style="background:linear-gradient(160deg,rgba(17,27,51,0.9) 0%,rgba(4,13,26,1) 100%);border:1px solid rgba(255,255,255,0.07)">
+        <h2 class="font-black text-white mb-5" style="font-size:16px;letter-spacing:-0.01em">Add New {sportConfig.label} Source</h2>
         <form
           hx-post="/sources"
           hx-target="#sources-table"
@@ -94,21 +93,21 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
         >
           <input type="hidden" name="sport" value={sport} />
           <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Name</label>
+            <label class="block uppercase font-bold mb-2" style="font-size:10px;letter-spacing:0.1em;color:rgba(100,116,139,0.7)">Name</label>
             <input
               type="text"
               name="name"
               required
               placeholder={`e.g. ${sportConfig.label} Stats`}
-              class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              style={inputStyle}
             />
           </div>
           <div>
-            <label class="block text-xs text-gray-400 mb-1.5">Type</label>
+            <label class="block uppercase font-bold mb-2" style="font-size:10px;letter-spacing:0.1em;color:rgba(100,116,139,0.7)">Type</label>
             <select
               name="type"
               required
-              class="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              style={inputStyle}
             >
               {typeOptions.map((opt) => (
                 <option value={opt.value}>{opt.label}</option>
@@ -116,28 +115,28 @@ export const SourcesPage: FC<SourcesPageProps> = ({ sources, aiProvider, aiModel
             </select>
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-xs text-gray-400 mb-1.5">URL</label>
+            <label class="block uppercase font-bold mb-2" style="font-size:10px;letter-spacing:0.1em;color:rgba(100,116,139,0.7)">URL</label>
             <input
               type="url"
               name="url"
               required
               placeholder="https://..."
-              class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              style={inputStyle}
             />
           </div>
           <div class="sm:col-span-2">
-            <label class="block text-xs text-gray-400 mb-1.5">Description (optional)</label>
+            <label class="block uppercase font-bold mb-2" style="font-size:10px;letter-spacing:0.1em;color:rgba(100,116,139,0.7)">Description (optional)</label>
             <input
               type="text"
               name="description"
               placeholder="What does this source provide?"
-              class="w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-600 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-blue-500"
+              style={inputStyle}
             />
           </div>
           <div class="sm:col-span-2">
             <button
               type="submit"
-              class="bg-blue-600 hover:bg-blue-500 text-white font-medium text-sm px-5 py-2 rounded-lg transition-colors"
+              class="btn-primary text-sm px-6 py-2.5 rounded-xl"
             >
               Add Source
             </button>
