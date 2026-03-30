@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" fill="#1a1a3a"/>
+  
+  <!-- NRL goal posts - H shape with crossbar -->
+  <!-- Left upright -->
+  <rect x="10" y="10" width="1.8" height="16" fill="#fff" rx="0.3"/>
+  <!-- Right upright -->
+  <rect x="20.2" y="10" width="1.8" height="16" fill="#fff" rx="0.3"/>
+  <!-- Crossbar -->
+  <rect x="10" y="18" width="12" height="1.5" fill="#fff" rx="0.3"/>
+  
+  <!-- Ground line -->
+  <line x1="6" y1="26" x2="26" y2="26" stroke="#4a4a7c" stroke-width="0.8"/>
+</svg>

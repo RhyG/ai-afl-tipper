@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background -->
+  <rect width="32" height="32" fill="#1a3a1a"/>
+  
+  <!-- AFL goal posts - 4 posts, evenly spaced -->
+  <!-- Left behind post (shorter) -->
+  <rect x="6" y="12" width="1.5" height="14" fill="#fff" rx="0.3"/>
+  <!-- Left goal post (taller) -->
+  <rect x="11.5" y="5" width="1.5" height="21" fill="#fff" rx="0.3"/>
+  <!-- Right goal post (taller) -->
+  <rect x="19" y="5" width="1.5" height="21" fill="#fff" rx="0.3"/>
+  <!-- Right behind post (shorter) -->
+  <rect x="24.5" y="12" width="1.5" height="14" fill="#fff" rx="0.3"/>
+  
+  <!-- Ground line -->
+  <line x1="4" y1="26" x2="28" y2="26" stroke="#4a7c4a" stroke-width="0.8"/>
+</svg>
