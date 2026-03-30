@@ -49,6 +49,8 @@ export interface GameOdds {
 
 // Per-sport odds cache
 const _oddsCache = new Map<string, { games: GameOdds[]; fetchedAt: number }>();
+// Deduplicate concurrent fetches for the same sport
+const _inFlight = new Map<string, Promise<GameOdds[]>>();
 
 function normalizeTeam(name: string, sport: SportConfig): string {
   if (sport.teamNameMap[name]) return sport.teamNameMap[name];
@@ -63,10 +65,19 @@ function decimalToImplied(odds: number): number {
   return Math.round((100 / odds) * 10) / 10;
 }
 
-export async function fetchOdds(sport: SportConfig): Promise<GameOdds[]> {
+export function fetchOdds(sport: SportConfig): Promise<GameOdds[]> {
   const cached = _oddsCache.get(sport.id);
-  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) return cached.games;
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL) return Promise.resolve(cached.games);
 
+  const existing = _inFlight.get(sport.id);
+  if (existing) return existing;
+
+  const promise = _doFetchOdds(sport).finally(() => _inFlight.delete(sport.id));
+  _inFlight.set(sport.id, promise);
+  return promise;
+}
+
+async function _doFetchOdds(sport: SportConfig): Promise<GameOdds[]> {
   const apiKey = process.env.THE_ODDS_API_KEY ?? "";
   if (!apiKey) return [];
 
